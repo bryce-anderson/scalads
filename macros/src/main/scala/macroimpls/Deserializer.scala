@@ -4,19 +4,20 @@ import language.experimental.macros
 import scala.reflect.macros.Context
 import scala.Some
 import macro_readers.{JsonReader, JsonObjectReader, JsonArrayIterator}
-import macrohelpers.MacroHelpers
+import macroimpls.macrohelpers.MacroHelpers
 import java.text.SimpleDateFormat
 import exceptions.MappingException
 
 
-trait Deserializer extends MacroHelpers {
-
-  import c.universe._
+object Deserializer {
 
   import java.util.Date
 
-  def deserialize[U: c.WeakTypeTag](reader: c.Expr[JsonReader]): c.Expr[U] = {
+  def deserialize[U: c.WeakTypeTag](c: Context)(reader: c.Expr[JsonReader]): c.Expr[U] = {
 
+    val helpers = new MacroHelpers[c.type](c)
+    import helpers.{isPrimitive,LIT,typeArgumentTree}
+    import c.universe._
 
     def rparseDate(field: c.Expr[String], reader: c.Expr[JsonObjectReader])  = reify {
       new SimpleDateFormat().parse(rparseString(field, reader).splice)

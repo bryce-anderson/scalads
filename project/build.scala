@@ -24,7 +24,9 @@ object build extends Build {
   lazy val main = Project(
     id = "ds-main",
     base = file("main"),
-    settings = Settings.buildSettings
+    settings = Settings.buildSettings ++ Seq(
+      libraryDependencies += "com.google.appengine" % "appengine-api-1.0-sdk" % "1.8.0"
+    )
   ) 
 }
 

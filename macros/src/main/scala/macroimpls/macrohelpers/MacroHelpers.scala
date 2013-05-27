@@ -4,14 +4,12 @@ import scala.reflect.macros.Context
 import java.util.Date
 
 
-trait MacroHelpers {
-
-  val c: Context
+class MacroHelpers[CTPE <: Context](val c: CTPE) {
 
   import c.universe._
   
   def LIT[B](x: B) = c.Expr[B](Literal(Constant(x)))
-  
+
   // For building objects that take type parameters
   def typeArgumentTree(t: c.Type): c.Tree = t match {
     case TypeRef(_, _, typeArgs @ _ :: _) => AppliedTypeTree(

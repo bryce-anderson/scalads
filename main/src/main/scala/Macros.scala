@@ -3,7 +3,6 @@ import language.experimental.macros
 
 
 trait Macros {
-  
 //  def serialize[U](obj: U, writer: JsonWriter[_])(implicit defaultFormats: Formats) =
 //    macro macroimpls.Serializer.serializeImpl[U]
 //
