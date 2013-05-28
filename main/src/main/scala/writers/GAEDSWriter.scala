@@ -13,13 +13,12 @@ import scala.collection.mutable.ListBuffer
 class GAEDSWriter(valTpe: String, parentKey: Key = null) extends Writer[List[Entity]] {
 
   private val entities = new ListBuffer[Entity]
-  private val rootEntity = new Entity(valTpe, parentKey)
   private val ef = { (objType: String, parent: Key) =>
     val e = new Entity(objType, parent)
     entities += e
     e
   }
-  private var writer: DSWriter = new ObjectWriter(rootEntity, null, ef)
+  private var writer: DSWriter = new RootWriter(ef(valTpe, parentKey), ef)
 
   def result = entities.result()
 
@@ -85,6 +84,23 @@ trait DSWriter { self =>
   def endObject(): DSWriter = parent
 
   def startField(name: String): DSWriter = error("startField")
+}
+
+class RootWriter(val rootEntity: Entity, val ef: DSWriter#EntityFactory) extends DSWriter {
+
+  def parent: DSWriter = sys.error("RootWriter doesn't have a parent")
+
+  private var finished = false
+  protected def entity = rootEntity
+
+  override def startArray(): DSWriter = sys.error("Root Writer cannot start an array")
+
+  override def startObject(objType: String): DSWriter = {
+    if (finished) sys.error("RootWriter already started. Cannot start a new object!")
+    else new ObjectWriter(entity, this, ef)
+  }
+
+  override def endObject() = { finished = true; this }
 }
 
 private[writers] class ObjectWriter(val entity: Entity, val parent: DSWriter, val ef: DSWriter#EntityFactory) extends DSWriter { self =>

@@ -87,8 +87,10 @@ object Serializer {
         } else Nil
       }}
 
+      val nameTree = c.Expr[String](Select(Select(Ident(newTermName(oldTpe.typeSymbol.name.decoded)),
+        newTermName("getClass")), newTermName("toString")))
       // Return add all the blocks for each field and pop this obj off the stack
-      Block(reify(writer.splice.startObject(LIT(oldTpe.toString).splice)).tree::ctorTrees:::
+      Block(reify(writer.splice.startObject(nameTree.splice)).tree::ctorTrees:::
         reify{writer.splice.endObject()}.tree::Nil, reify{}.tree)
     }
 

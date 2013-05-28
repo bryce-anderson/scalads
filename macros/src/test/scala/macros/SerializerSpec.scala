@@ -3,7 +3,9 @@ package macros
 import org.scalatest._
 import writers.GAEDSWriter
 import com.google.appengine.tools.development.testing.{LocalDatastoreServiceTestConfig, LocalServiceTestHelper}
+import com.google.appengine.api.datastore.FetchOptions.Builder.withLimit
 import org.scalatest.matchers.ShouldMatchers
+import com.google.appengine.api.datastore.{Query, DatastoreServiceFactory}
 
 
 /**
@@ -26,19 +28,32 @@ class SerializerSpec extends FlatSpec with BeforeAndAfter with ShouldMatchers {
     val a = Simple(0, "one")
     val writer = new GAEDSWriter("Simple")
     macroimpls.Serializer.serialize(a, writer)
-    println(writer.result)
+    val ds = DatastoreServiceFactory.getDatastoreService()
+    ds.put(writer.result.head)
 
-    (4) should equal (4)
   }
 
   it should "Store a compound object" in {
     case class Compound(name: String, simple: Simple, end: String)
 
-    val a = Compound("compound", Simple(0, "one"), "the end")
+    val a = Compound("Compound", Simple(0, "one"), "the end")
     val writer = new GAEDSWriter("Compound")
     macroimpls.Serializer.serialize(a, writer)
-    println(writer.result.map{e => e.getParent})
+    val entities = writer.result
 
-    (4) should equal (4)
+    println(entities)
+    println(Simple.getClass)
+
+    val ds = DatastoreServiceFactory.getDatastoreService()
+    val txn = ds.beginTransaction()
+    try {
+      entities.foreach(ds.put)
+      txn.commit()
+    } finally {
+      if (txn.isActive) txn.rollback()
+    }
+
+    ds.prepare(new Query("Compound")).countEntities(withLimit(10)) should equal (1)
+    ds.prepare(new Query(Simple.getClass.toString)).countEntities(withLimit(10)) should equal (1)
   }
 }
