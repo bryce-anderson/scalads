@@ -13,6 +13,7 @@ import writers.Writer
 // Intended to be the serialization side of the class builder
 object Serializer {
   /* ----------------- Macro Serializer ----------------- */
+  def serialize[U](obj: U, writer: Writer[_]) = macro serializeImpl[U]
   def serializeImpl[U: c.WeakTypeTag](c: Context)(obj: c.Expr[U], writer: c.Expr[Writer[_]]): c.Expr[Unit] = {
     val c1 = c
     val helpers = new MacroHelpers[c.type](c)
@@ -85,9 +86,10 @@ object Serializer {
           startFieldExpr.tree::buildTpe(tpe, fieldPath)::Nil
         } else Nil
       }}
+
       // Return add all the blocks for each field and pop this obj off the stack
-      Block(reify(writer.splice.startObject(oldTpe.getClass.getName)).tree::ctorTrees:::
-        reify{writer.splice.endObject()}.tree::Nil, EmptyTree)
+      Block(reify(writer.splice.startObject(LIT(oldTpe.toString).splice)).tree::ctorTrees:::
+        reify{writer.splice.endObject()}.tree::Nil, reify{}.tree)
     }
 
     def buildTpe(tpe: Type, path: Tree): Tree = primitiveTypes.find(_._1 =:= tpe)
@@ -102,17 +104,11 @@ object Serializer {
 
     val tpe = weakTypeOf[U]
 
-    // Only basic types are lists maps or objects
-    if (isPrimitive(tpe) || tpe =:= typeOf[Option[_]])
-      c.abort(c.enclosingPosition,  s"Json4s macros cannot serialize primitive type '$tpe'")
-
-    val tree = if(tpe <:< typeOf[scala.collection.Seq[Any]]) {
-      listExpr(tpe, obj.tree).tree
-    } else if(tpe <:< typeOf[scala.collection.GenMap[_, _]]) {
+    val tree = if(tpe <:< typeOf[scala.collection.GenMap[_, _]]) {
       mapExpr(tpe, obj.tree).tree
     } else complexObject(tpe, obj.tree)
 
-    //println(s"------------------ Debug: Generated Code ------------------\n $code")
+    println(s"------------------ Debug: Generated Code ------------------\n $tree")
     c.Expr[Unit](tree)
   }
 }
