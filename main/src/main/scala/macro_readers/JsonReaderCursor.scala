@@ -104,7 +104,7 @@ class JsonReaderCursor(reader: java.io.Reader, bufferSize: Int = 150) extends Js
     trim()
     peak() match {
       case '"'                        => findNextString()
-      case '{'                        => JsonObject(new TextObjectReader(self))
+      case '{'                        => JsonObject(new JsonTextObjectReader(self))
       case '['                        => JsonArray(new TextArrayIterator(self))
       case c if (isNumberChar(c))     => findNextNumber()
       case 'f' if (nextChar == 'f' && nextChar == 'a' && nextChar == 'l' && nextChar == 's' && nextChar == 'e') => JsonBool(false)

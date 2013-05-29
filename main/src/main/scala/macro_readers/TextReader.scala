@@ -3,16 +3,19 @@ package macro_readers
 import annotation.tailrec
 import collection.mutable.ListBuffer
 import runtime.ScalaRunTime
+import java.util.Date
+import com.google.appengine.repackaged.org.joda.time.format.DateTimeFormat
+import java.text.SimpleDateFormat
 
 /**
  * @author Bryce Anderson
  * Created on 3/25/13 at 8:37 PM
  */
 
-final class TextObjectReader(cursor: JsonTextCursor) extends JsonObjectReader {
+final class JsonTextObjectReader(cursor: JsonTextCursor) extends ObjectReader {
 
   override def equals(other: Any) = other match {
-    case other: TextObjectReader => this.fields == other.fields
+    case other: JsonTextObjectReader => this.fields == other.fields
     case _ => false
   }
 
@@ -51,12 +54,12 @@ final class TextObjectReader(cursor: JsonTextCursor) extends JsonObjectReader {
   lazy val getKeys: Set[String] = fields.map(_._1).toSet
 
   // Option forms
-  def optObjectReader(key: String): Option[JsonObjectReader] = getField(key).map ( _ match {
+  def optObjectReader(key: String): Option[ObjectReader] = getField(key).map ( _ match {
     case JsonObject(reader) => reader
     case e => failStructure(s"Field '$key' doesn't contain object: ${e.toString}")
   })
 
-  def optArrayReader(key: String): Option[JsonArrayIterator] = getField(key).map ( _ match {
+  def optArrayReader(key: String): Option[ArrayIterator] = getField(key).map ( _ match {
     case JsonArray(reader) => reader
     case e => failStructure(s"Field '$key' doesn't contain array: ${e.toString}")
   })
@@ -100,9 +103,11 @@ final class TextObjectReader(cursor: JsonTextCursor) extends JsonObjectReader {
     case JsonString(str) => str
     case e => failStructure(s"Field '$key' doesn't contain number: ${e.toString}")
   })
+
+  def optDate(key: String): Option[Date] = optString(key).map(new SimpleDateFormat().parse(_))
 }
 
-final class TextArrayIterator(cursor: JsonTextCursor) extends JsonArrayIterator {
+final class TextArrayIterator(cursor: JsonTextCursor) extends ArrayIterator {
 
   override def equals(other: Any) = other match {
     case other: TextArrayIterator => this.fields == other.fields
@@ -137,12 +142,12 @@ final class TextArrayIterator(cursor: JsonTextCursor) extends JsonArrayIterator 
   def hasNext: Boolean = !fields.isEmpty
 
   // Option forms
-  def getNextObjectReader: Option[JsonObjectReader] = nextField match {
+  def getNextObjectReader: Option[ObjectReader] = nextField match {
     case JsonObject(obj) => Some(obj)
     case _ => None
   }
 
-  def getNextArrayReader: Option[JsonArrayIterator] = nextField match {
+  def getNextArrayReader: Option[ArrayIterator] = nextField match {
     case JsonArray(arr) => Some(arr)
     case _ => None
   }
@@ -186,4 +191,6 @@ final class TextArrayIterator(cursor: JsonTextCursor) extends JsonArrayIterator 
     case JsonString(str) => Some(str)
     case _ => None
   }
+
+  def getNextDate: Option[Date] = getNextString.map(new SimpleDateFormat().parse(_))
 }

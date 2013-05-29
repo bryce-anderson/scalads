@@ -8,7 +8,7 @@ import scala.annotation.tailrec
  */
 
 object JsonTextReader {
-  def bindText(str: String): JsonReader = {
+  def bindText(str: String): Reader = {
     val cursor = new JsonStringCursor(str)
     cursor.extractField() match {
       case JsonObject(obj) => obj
@@ -22,8 +22,8 @@ sealed trait JsonField
 case object Null extends JsonField
 case class JsonBool(v: Boolean) extends JsonField
 case class JsonString(str: String) extends JsonField
-case class JsonObject(reader: JsonObjectReader) extends JsonField
-case class JsonArray(reader: JsonArrayIterator) extends JsonField
+case class JsonObject(reader: ObjectReader) extends JsonField
+case class JsonArray(reader: ArrayIterator) extends JsonField
 case class JsonNumber(str: String) extends JsonField {
   def toInt = str.toInt
   def toLong = str.toLong

@@ -116,7 +116,7 @@ class JsonStringCursor(txt: String) extends JsonTextCursor { self =>
       failStructure(s"Tried to extract field that doesn't exist!")
     } else txt.charAt(current) match {
       case '"'                    => findNextString()
-      case '{'                    => JsonObject(new TextObjectReader(self))
+      case '{'                    => JsonObject(new JsonTextObjectReader(self))
       case '['                    => JsonArray(new TextArrayIterator(self))
       case c if (isNumberChar(c)) => findNextNumber()
       case c if(c == 't' || c == 'f') => findNextBoolean()

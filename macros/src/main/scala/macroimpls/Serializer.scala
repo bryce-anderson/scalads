@@ -5,7 +5,7 @@ import scala.reflect.macros.Context
 import java.util.Date
 import util.Utils._
 
-import macrohelpers._
+import macrohelpers.MacroHelpers
 
 import writers.Writer
 
@@ -15,10 +15,9 @@ object Serializer {
   /* ----------------- Macro Serializer ----------------- */
   def serialize[U](obj: U, writer: Writer[_]) = macro serializeImpl[U]
   def serializeImpl[U: c.WeakTypeTag](c: Context)(obj: c.Expr[U], writer: c.Expr[Writer[_]]): c.Expr[Unit] = {
-    val c1 = c
     val helpers = new MacroHelpers[c.type](c)
 
-    import helpers.{isPrimitive, LIT}
+    import helpers.{isPrimitive, LIT, macroError, classNameExpr}
     import c.universe._
 
     val primitiveTypes =
@@ -36,21 +35,10 @@ object Serializer {
        (typeOf[scala.Symbol], (t: Tree) => reify{writer.splice.string(c.Expr[scala.Symbol](t).splice.name)})::
         Nil
 
-    def listExpr(tpe: Type, path: Tree): Expr[Unit] = {
-      val TypeRef(_, _:Symbol, pTpe::Nil) = tpe
-      reify{
-        writer.splice.startArray()
-        c.Expr[scala.collection.Seq[Any]](path).splice.foreach { i =>
-          c.Expr(buildTpe(pTpe, Ident(newTermName("i")))).splice
-        }
-        writer.splice.endArray()
-      }
-    }
-
     def mapExpr(tpe: Type, path: Tree): Expr[Unit] = {
       val TypeRef(_, _, keyTpe::valTpe::Nil) = tpe
       if(!isPrimitive(keyTpe)) {
-        c.abort(c.enclosingPosition, s"Maps needs to have keys of primitive type! Type: $keyTpe")
+        macroError(s"Maps needs to have keys of primitive type! Type: $keyTpe")
       }
 
       reify{
@@ -76,7 +64,7 @@ object Serializer {
     def complexObject(oldTpe: Type, path: Tree): c.Tree = {
       val TypeRef(_, sym: Symbol, tpeArgs: List[Type]) = oldTpe
 
-      // Completely flatten this thing out
+      // Completely flatten this list of constructors, accessing doesnt need the multiple applies
       val ctorTrees = oldTpe.member(nme.CONSTRUCTOR).asMethod.paramss.flatMap{ _.flatMap{ pSym =>
         if (pSym.isPublic) {
           val tpe = pSym.typeSignature.substituteTypes(sym.asClass.typeParams, tpeArgs)
@@ -87,19 +75,16 @@ object Serializer {
         } else Nil
       }}
 
-      val nameTree = c.Expr[String](Select(Select(Ident(newTermName(oldTpe.typeSymbol.name.decoded)),
-        newTermName("getClass")), newTermName("toString")))
+      val nameExpr = classNameExpr(oldTpe)
       // Return add all the blocks for each field and pop this obj off the stack
-      Block(reify(writer.splice.startObject(nameTree.splice)).tree::ctorTrees:::
+      Block(reify(writer.splice.startObject(nameExpr.splice)).tree::ctorTrees:::
         reify{writer.splice.endObject()}.tree::Nil, reify{}.tree)
     }
 
     def buildTpe(tpe: Type, path: Tree): Tree = primitiveTypes.find(_._1 =:= tpe)
-      .map{ case (_, f) => f(path).tree}
-      .orElse{if(tpe <:< typeOf[scala.collection.Seq[_]]) Some(listExpr(tpe, path).tree) else None }
-      .orElse{if(tpe <:< typeOf[scala.collection.GenMap[_, _]]) {
-          Some(mapExpr(tpe, path).tree)
-        } else None}
+      .map{ case (_, f) => f(path).tree }
+      .orElse{if(tpe <:< typeOf[scala.collection.Seq[_]]) macroError(s"Sequences are not supported"); None }
+      .orElse{if(tpe <:< typeOf[scala.collection.GenMap[_, _]]) { Some(mapExpr(tpe, path).tree) } else None}
       .orElse{if(tpe <:< typeOf[Option[_]]) Some(optionExpr(tpe, path).tree) else None }
       .getOrElse(complexObject(tpe, path))
 

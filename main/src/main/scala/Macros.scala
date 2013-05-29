@@ -9,7 +9,7 @@ trait Macros {
 //  def decompose[U](obj: U)(implicit defaultFormats: Formats): JValue =
 //    macro macroimpls.Serializer.decompose[U]
 //
-//  def deserialize[U](reader: JsonReader)(implicit defaultFormats: Formats): U =
+//  def deserialize[U](reader: Reader)(implicit defaultFormats: Formats): U =
 //    macro macroimpls.Deserializer.deserialize_impl[U]
 //
 //  def read[U](str: String)(implicit defaultFormats: Formats): U =

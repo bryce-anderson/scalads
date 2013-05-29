@@ -3,7 +3,7 @@ package macroimpls
 import language.experimental.macros
 import scala.reflect.macros.Context
 import scala.Some
-import macro_readers.{JsonReader, JsonObjectReader, JsonArrayIterator}
+import macro_readers.{Reader, ObjectReader, ArrayIterator}
 import macroimpls.macrohelpers.MacroHelpers
 import java.text.SimpleDateFormat
 import exceptions.MappingException
@@ -13,25 +13,25 @@ object Deserializer {
 
   import java.util.Date
 
-  def deserialize[U: c.WeakTypeTag](c: Context)(reader: c.Expr[JsonReader]): c.Expr[U] = {
+  def deserialize[U: c.WeakTypeTag](c: Context)(reader: c.Expr[Reader]): c.Expr[U] = {
 
     val helpers = new MacroHelpers[c.type](c)
-    import helpers.{isPrimitive,LIT,typeArgumentTree}
+    import helpers.{isPrimitive,LIT,typeArgumentTree, macroError}
     import c.universe._
 
-    def rparseDate(field: c.Expr[String], reader: c.Expr[JsonObjectReader])  = reify {
+    def rparseDate(field: c.Expr[String], reader: c.Expr[ObjectReader])  = reify {
       new SimpleDateFormat().parse(rparseString(field, reader).splice)
     }
 
-    def rparseString(field: c.Expr[String], reader: c.Expr[JsonObjectReader]) = reify {
+    def rparseString(field: c.Expr[String], reader: c.Expr[ObjectReader]) = reify {
       reader.splice.getString(field.splice)
     }
 
-    def rparseSymbol(field: c.Expr[String], reader: c.Expr[JsonObjectReader]) = reify {
+    def rparseSymbol(field: c.Expr[String], reader: c.Expr[ObjectReader]) = reify {
       Symbol(rparseString(field, reader).splice)
     }
 
-    def rparseOption(tpe:Type, field: c.Expr[String], reader: c.Expr[JsonObjectReader]):Tree = {
+    def rparseOption(tpe:Type, field: c.Expr[String], reader: c.Expr[ObjectReader]):Tree = {
       val TypeRef(_, _, List(argTpe)) = tpe
       reify{
         try{
@@ -42,7 +42,7 @@ object Deserializer {
       }.tree
     }
 
-    def buildMap(tpe:Type, reader: c.Expr[JsonObjectReader]): c.Tree   = {
+    def buildMap(tpe:Type, reader: c.Expr[ObjectReader]): c.Tree   = {
       val TypeRef(_, _, keyTpe::valTpe::Nil) = tpe
       // Capable of parsing maps that contain primitives as keys, not only strings
       val kExpr = c.Expr[String](Ident("k"))
@@ -62,55 +62,8 @@ object Deserializer {
       }.tree
     }
 
-    def buildList(tpe: Type, reader: c.Expr[JsonArrayIterator]): Tree = {
-      val TypeRef(_, _, List(argTpe)) = tpe
-
-      val builderExpr = c.Expr[collection.mutable.Builder[Any, List[Any]]](TypeApply(Select(
-        Ident("List"), newTermName("newBuilder")), List(TypeTree(argTpe))))
-
-      val itNme = c.fresh("jsonIterator$")
-      val itExpr = c.Expr[JsonArrayIterator](Ident(itNme))
-      val itTree = ValDef(
-        Modifiers(),
-        newTermName(itNme),
-        TypeTree(typeOf[JsonArrayIterator]),
-        reader.tree
-      )
-
-      reify{
-        val builder = builderExpr.splice
-        c.Expr(itTree).splice
-        while(itExpr.splice.hasNext) {
-          builder += c.Expr[Any](buildCell(argTpe, itExpr)).splice
-        }
-        builder.result
-       }.tree
-    }
-
-    // builds the cells of a list
-    def buildCell(tpe: Type, reader: c.Expr[JsonArrayIterator]): Tree = {
-      if      (tpe =:= typeOf[Int])           reify { reader.splice.nextInt }.tree
-      else if (tpe =:= typeOf[Long])          reify { reader.splice.nextLong }.tree
-      else if (tpe =:= typeOf[Float])         reify { reader.splice.nextFloat }.tree
-      else if (tpe =:= typeOf[Double])        reify { reader.splice.nextDouble }.tree
-      else if (tpe =:= typeOf[String])        reify { reader.splice.nextString }.tree
-      else if (typeOf[List[_]] <:< tpe.erasure) buildList(tpe, reify{reader.splice.nextArrayReader})
-      else if (typeOf[Map[_, _]] <:< tpe.erasure) {
-        val orNme = c.fresh("jsonReader$")
-        val orExpr = c.Expr[JsonObjectReader](Ident(orNme))
-        val orTree = ValDef(
-          Modifiers(),
-          newTermName(orNme),
-          TypeTree(typeOf[JsonObjectReader]),
-          reify{reader.splice.nextObjectReader}.tree
-        )
-        Block(orTree, buildMap(tpe, orExpr))
-      }
-      else buildObject(tpe, reify{reader.splice.nextObjectReader})
-    }
-
     // builds the different fields of an Object or Map
-    def buildField(tpe: Type, fieldName: c.Expr[String], reader: c.Expr[JsonObjectReader]): Tree = {
+    def buildField(tpe: Type, fieldName: c.Expr[String], reader: c.Expr[ObjectReader]): Tree = {
       if (isPrimitive(tpe)) buildPrimitive(tpe, fieldName, reader)
       // The privileged types
       else if (tpe.erasure <:< typeOf[Option[_]]) {
@@ -118,22 +71,22 @@ object Deserializer {
       }
       else if (typeOf[Map[_, _]] <:< tpe.erasure) {
         val orNme = c.fresh("jsonReader$")
-        val orExpr = c.Expr[JsonObjectReader](Ident(orNme))
+        val orExpr = c.Expr[ObjectReader](Ident(orNme))
         val orTree = ValDef(
           Modifiers(),
           newTermName(orNme),
-          TypeTree(typeOf[JsonObjectReader]),
+          TypeTree(typeOf[ObjectReader]),
           reader.tree
         )
         Block(orTree, buildMap(tpe, orExpr))
       }
       else if (typeOf[List[_]] <:< tpe.erasure) {
-        buildList(tpe, reify{reader.splice.getArrayReader(fieldName.splice)})
+        macroError("Entities cannot contain lists")
       }
       else  buildObject(tpe, reify{ reader.splice.getObjectReader(fieldName.splice)})
     }
 
-    def buildPrimitive(tpe: Type, field: c.Expr[String], reader: c.Expr[JsonObjectReader]) = {
+    def buildPrimitive(tpe: Type, field: c.Expr[String], reader: c.Expr[ObjectReader]) = {
       if      (tpe =:= typeOf[Int])         reify {reader.splice.getInt(field.splice)    }.tree
         // TODO: type Byte and Char
       else if (tpe =:= typeOf[Short])       reify {reader.splice.getInt(field.splice).asInstanceOf[Short]}.tree
@@ -154,7 +107,7 @@ object Deserializer {
       else throw new java.lang.NoSuchFieldException(s"Type '$tpe' is not a primitive!")
     }
 
-    def buildPrimitiveOpt(tpe: Type, field: c.Expr[String], reader: c.Expr[JsonObjectReader]): c.Expr[Option[_]] = {
+    def buildPrimitiveOpt(tpe: Type, field: c.Expr[String], reader: c.Expr[ObjectReader]): c.Expr[Option[_]] = {
       if      (tpe =:= typeOf[Int])         reify {reader.splice.optInt(field.splice)     }
       else if (tpe =:= typeOf[Short])       reify {reader.splice.optInt(field.splice).map(_.asInstanceOf[Short])}
       else if (tpe =:= typeOf[Byte])       reify {reader.splice.optInt(field.splice).map(_.asInstanceOf[Byte])}
@@ -179,18 +132,18 @@ object Deserializer {
     }
 
     // Builds a class and sets its fields if they are detected
-    def buildObject(tpe: Type, reader: c.Expr[JsonObjectReader]): Tree = {
+    def buildObject(tpe: Type, reader: c.Expr[ObjectReader]): Tree = {
       // Find some info on our object type
       val TypeRef(_, sym: Symbol, tpeArgs: List[Type]) = tpe
       val newObjTypeTree = typeArgumentTree(tpe)
 
       // Make the object reader tree bits
       val orNme = c.fresh("jsonReader$")
-      val orExpr = c.Expr[JsonObjectReader](Ident(orNme))
+      val orExpr = c.Expr[ObjectReader](Ident(orNme))
       val orTree = ValDef(
         Modifiers(),
         newTermName(orNme),
-        TypeTree(typeOf[JsonObjectReader]),
+        TypeTree(typeOf[ObjectReader]),
         reader.tree
       )
 
@@ -261,64 +214,11 @@ object Deserializer {
           })
         )
 
-      // Sets fields after the instance is has been created
-      def optionalParams(pTpe: Type, varName: String, exprMaker: Tree => c.Expr[_]): Tree = {
-        val compName = LIT(varName)
-        // Use option if primitive, should be faster than exceptions.
-        if(isPrimitive(pTpe)) reify {
-          buildPrimitiveOpt(pTpe, compName, orExpr).splice match {
-            case Some(x) => exprMaker(Ident("x")).splice
-            case None =>
-          }
-        }.tree
-        else if(typeOf[List[_]] <:< pTpe.erasure) reify {
-          reader.splice.optArrayReader(compName.splice) match {
-            case Some(x) => exprMaker(buildList(pTpe,c.Expr[JsonArrayIterator](Ident("x")))).splice
-            case None =>
-          }
-        }.tree
-        else if(typeOf[Map[_, _]] <:< pTpe.erasure) reify {
-          reader.splice.optObjectReader(compName.splice) match {
-            case Some(x) => exprMaker(buildMap(pTpe,c.Expr[JsonObjectReader](Ident("x")))).splice
-            case None =>
-          }
-        }.tree
-        else reify {
-          reader.splice.optObjectReader(compName.splice) match {
-            case Some(x) => exprMaker(buildObject(pTpe,c.Expr[JsonObjectReader](Ident("x")))).splice
-            case None =>
-          }
-        }.tree
-      }
-
       val newObjTerm = newTermName(c.fresh("newObj$"))
       val newObjTree = ValDef(Modifiers(), newObjTerm, newObjTypeTree,
         pickConstructorTree(reify(orExpr.splice.getKeys))
       )
 
-//      val setVarsBlocks =
-//        getNonConstructorVars(tpe).map{ pSym =>
-//          val varName = pSym.name.toTermName.toString.trim
-//          val tpe = pSym.typeSignature.substituteTypes(sym.asClass.typeParams, tpeArgs)
-//          optionalParams(tpe, varName,
-//            tree => c.Expr(Assign(Select(Ident(newObjTerm), newTermName(varName)), tree))
-//          )
-//        }
-//
-//      val setSetterBlocks =
-//        getJavaStyleSetters(tpe).map { pSym =>  // MethodSymbol
-//          val origName = pSym.name.decoded.substring(3)
-//          val name = origName.charAt(0).toLower + origName.substring(1)
-//          val paramType = {
-//            val tpe = pSym.asMethod.paramss(0)(0)
-//            tpe.typeSignature.substituteTypes(sym.asClass.typeParams, tpeArgs)
-//          }
-//          optionalParams(paramType, name,
-//            tree =>  c.Expr(Apply(Select(Ident(newObjTerm), pSym.name), tree::Nil))
-//          )
-//      }
-
-      //Block(orTree::newObjTree::setVarsBlocks:::setSetterBlocks, Ident(newObjTerm))
       Block(orTree::newObjTree::Nil, Ident(newObjTerm))
     }
     
@@ -326,27 +226,21 @@ object Deserializer {
 
     // The three fundamental types that can be deserialized
     val expr = if (typeOf[Map[_, _]] <:< tpe.erasure) {
-      val i = c.Expr[U](buildMap(tpe, c.Expr[JsonObjectReader](Ident("r"))))
+      val i = c.Expr[U](buildMap(tpe, c.Expr[ObjectReader](Ident("r"))))
       reify {
         reader.splice match {
-          case r: JsonObjectReader => i.splice
+          case r: ObjectReader => i.splice
           case e => throw new IllegalStateException(s"Need reader type Object to read object fields. Found: ${e.getClass.toString}")
         }
       }
     }
     else if (typeOf[List[_]] <:< tpe.erasure) {
-      val i = c.Expr[U](buildList(tpe, c.Expr[JsonArrayIterator](Ident("r"))))
-      reify {
-        reader.splice match {
-          case r: JsonArrayIterator => i.splice
-          case e => throw new IllegalStateException(s"Need reader type Array to read object fields. Found: ${e.getClass.toString}")
-        }
-      }
+      macroError("Sequences cannot be pulled from the datastore")
     } else {
-      val i = c.Expr[U](buildObject(tpe, c.Expr[JsonObjectReader](Ident("r"))))
+      val i = c.Expr[U](buildObject(tpe, c.Expr[ObjectReader](Ident("r"))))
       reify {
         reader.splice match {
-          case r: JsonObjectReader => i.splice
+          case r: ObjectReader => i.splice
           case e => throw new IllegalStateException(s"Need reader type Object to read object fields. Found: ${e.getClass.toString}")
         }
       }

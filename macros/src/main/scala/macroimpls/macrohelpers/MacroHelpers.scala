@@ -7,6 +7,8 @@ import java.util.Date
 class MacroHelpers[CTPE <: Context](val c: CTPE) {
 
   import c.universe._
+
+  def macroError(msg: String) = { c.error(c.enclosingPosition, msg); throw new Exception }
   
   def LIT[B](x: B) = c.Expr[B](Literal(Constant(x)))
 
@@ -16,6 +18,11 @@ class MacroHelpers[CTPE <: Context](val c: CTPE) {
           Ident(t.typeSymbol), typeArgs map (t => typeArgumentTree(t)) )
     case _                                => Ident(t.typeSymbol.name)
   }
+
+  def classNameExpr(tpe: Type) = c.Expr[String](
+    Select(Select(Ident(newTermName(tpe.typeSymbol.name.decoded)),
+    newTermName("getClass")), newTermName("toString"))
+  )
 
   private lazy val primitiveTypes =  {
     c.typeOf[Int]::
