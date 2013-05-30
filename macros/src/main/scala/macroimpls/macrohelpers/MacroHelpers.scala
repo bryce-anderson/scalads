@@ -44,7 +44,7 @@ class MacroHelpers[CTPE <: Context](val c: CTPE) {
 
   private def constructorExtractor(tree: Tree): List[List[Tree]] = {
     def extract(tree: Tree, lst: List[List[Tree]]): List[List[Tree]] = tree match {
-      case Apply(tree, args: List[Symbol]) => extract(tree, args::lst)
+      case Apply(tree, args: List[_]) => extract(tree, args::lst)
       case _ => lst
     }
     extract(tree, Nil)

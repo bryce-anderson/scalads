@@ -20,7 +20,7 @@ class DeserializerSpec extends GAESpecTemplate {
   val three = Three(myCompound)
 
   "Deserializer" should "extract a simple entity" in {
-    val writer = new GAEDSWriter("Simple")
+    val writer = new GAEDSWriter(newEntity(mySimple))
     macroimpls.Serializer.serialize(mySimple, writer)
     val entity = writer.result
 
@@ -32,7 +32,7 @@ class DeserializerSpec extends GAESpecTemplate {
   }
 
   it should "Work with compound objects" in {
-    val writer = new GAEDSWriter("Compound")
+    val writer = new GAEDSWriter(newEntity(myCompound))
     macroimpls.Serializer.serialize(myCompound, writer)
     val entity = writer.result
 
@@ -45,7 +45,7 @@ class DeserializerSpec extends GAESpecTemplate {
   }
 
   it should "Work with three fold deap objects" in {
-    val writer = new GAEDSWriter("Three")
+    val writer = new GAEDSWriter(newEntity(three))
     macroimpls.Serializer.serialize(three, writer)
     val entity = writer.result
 
@@ -57,7 +57,7 @@ class DeserializerSpec extends GAESpecTemplate {
   }
 
   it should "generate similar classes" in {
-    val writer = new GAEDSWriter("Simple")
+    val writer = new GAEDSWriter(newEntity(mySimple))
     macroimpls.Serializer.serialize(mySimple, writer)
     val entity = writer.result
 

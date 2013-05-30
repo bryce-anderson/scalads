@@ -7,11 +7,22 @@ import util.Utils._
 
 import macrohelpers.MacroHelpers
 
-import writers.Writer
+import writers.{GAEDSWriter, Writer}
+import com.google.appengine.api.datastore.{Key, Entity}
 
 
 // Intended to be the serialization side of the class builder
 object Serializer {
+  def serializeToEntity[U](obj: U, entity: Entity): Unit = macro serializeToEntityImpl[U]
+  def serializeToEntityImpl[U: c.WeakTypeTag](c: Context)(obj: c.Expr[U], entity: c.Expr[Entity]): c.Expr[Unit] = {
+    import c.universe._
+
+   reify{
+     val writer = new GAEDSWriter(entity.splice)
+     serializeImpl(c)(obj, c.Expr[GAEDSWriter](Ident(newTermName("writer")))).splice
+   }
+  }
+
   /* ----------------- Macro Serializer ----------------- */
   def serialize[U](obj: U, writer: Writer[_]) = macro serializeImpl[U]
   def serializeImpl[U: c.WeakTypeTag](c: Context)(obj: c.Expr[U], writer: c.Expr[Writer[_]]): c.Expr[Unit] = {

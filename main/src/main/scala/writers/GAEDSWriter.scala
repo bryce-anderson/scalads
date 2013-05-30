@@ -10,13 +10,11 @@ import scala.collection.mutable.ListBuffer
  * @author Bryce Anderson
  *         Created on 5/27/13
  */
-class GAEDSWriter(valTpe: String, parentKey: Key = null) extends Writer[Entity] {
+class GAEDSWriter(entity: Entity) extends Writer[Entity] {
 
-  private val e = new Entity(valTpe, parentKey)
+  private var writer: DSWriter = new RootWriter(entity)
 
-  private var writer: DSWriter = new RootWriter(e)
-
-  def result = e
+  def result = entity
 
   def startArray() {  sys.error("GAE Entities don't support Arrays") }
 
@@ -67,7 +65,7 @@ trait DSWriter { self =>
   def startField(name: String): DSWriter = error("startField")
 }
 
-class RootWriter(val rootEntity: Entity) extends DSWriter {
+class RootWriter(val rootEntity: Entity) extends DSWriter { self =>
 
   def parent: DSWriter = sys.error("RootWriter doesn't have a parent")
 
@@ -79,7 +77,7 @@ class RootWriter(val rootEntity: Entity) extends DSWriter {
     else new ObjectWriter(entity, this, "")
   }
 
-  override def endObject() = { finished = true; this }
+  override def endObject() = { finished = true; self }
 }
 
 private[writers] class ObjectWriter(val entity: Entity, val parent: DSWriter, prefix: String) extends DSWriter { self =>
@@ -98,7 +96,9 @@ private[writers] class ObjectWriter(val entity: Entity, val parent: DSWriter, pr
     }
 
     override def handleVal(value: Any): DSWriter = {
-      self.entity.setProperty(prefix, value)
+      // TODO: Checks if the property needs updating. Performance penalty?
+      if (!(value == null || value.equals(self.entity.getProperty(prefix))))
+        self.entity.setProperty(prefix, value)
       self
     }
   }

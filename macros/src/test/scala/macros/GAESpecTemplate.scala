@@ -3,6 +3,7 @@ package macros
 import org.scalatest._
 import com.google.appengine.tools.development.testing.{LocalDatastoreServiceTestConfig, LocalServiceTestHelper}
 import org.scalatest.matchers.ShouldMatchers
+import com.google.appengine.api.datastore.{Entity, Key}
 
 /**
  * @author Bryce Anderson
@@ -15,6 +16,8 @@ class GAESpecTemplate extends FlatSpec with BeforeAndAfter with ShouldMatchers {
   after { GAESpecTemplate.tearDown(helper) }
 
   before {  GAESpecTemplate.setUp(helper) }
+
+  def newEntity(obj: AnyRef, parent: Key = null) = new Entity(obj.getClass.toString, parent)
 
 }
 

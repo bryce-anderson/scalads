@@ -231,10 +231,14 @@ object Deserializer {
       val TypeRef(_, backerSym, _) = typeOf[EntityBacker]
       val (ctorTree: List[List[Tree]], readerTree) = buildObjParamExtract(tree)
 
+      val updateTree = Serializer.serializeToEntityImpl[U](c)(
+        c.Expr[U](Ident(newTermName("self"))), c.Expr[Entity](Ident(newTermName("ds_backingEntity")))
+      ).tree
+
       val newTree = Block(List(
         readerTree: Tree,
-        ClassDef(Modifiers(), newTypeName("$anon"), List(), Template(List(Ident(tpeSym), Ident(backerSym)),
-          emptyValDef, List(
+        ClassDef(Modifiers(Flag.FINAL), newTypeName("$anon"), List(), Template(List(Ident(tpeSym), Ident(backerSym)),
+          ValDef(Modifiers(Flag.PRIVATE), newTermName("self"), TypeTree(), EmptyTree) , List(
             ValDef(Modifiers(), newTermName("ds_backingEntity"), TypeTree(typeOf[Entity]), reify(reader.splice.entity).tree): Tree,
             DefDef(Modifiers(), nme.CONSTRUCTOR, Nil, Nil::Nil, TypeTree(),
               Block(
@@ -242,17 +246,15 @@ object Deserializer {
                   {(a,b: List[Tree]) => Apply(a,b)}::Nil,
                 Literal(Constant(()))
               )
-            )
+            ),
+            DefDef(Modifiers(), newTermName("ds_updateEntity"), Nil, Nil::Nil, TypeTree(typeOf[Unit]), updateTree)
           ))
         )),
         Apply(Select(New(Ident(newTypeName("$anon"))), nme.CONSTRUCTOR), List())
       )
       c.Expr[U with EntityBacker](newTree)
     }
-    
 
-
-    // The three fundamental types that can be deserialized
     val typeExpr: c.Expr[U with EntityBacker] = {
       val tree = buildObject(tpe,c.Expr[GAEObjectReader](Ident(newTermName("r"))))
       extendWithEntityBacker(tree)
@@ -263,7 +265,6 @@ object Deserializer {
       typeExpr.splice
       }
 
-    // TODO: need to modify the first tree to be a anonymous class backed by an entity
     println(expr)  // Debug
 
     expr
