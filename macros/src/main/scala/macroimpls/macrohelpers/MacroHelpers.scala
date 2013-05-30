@@ -41,4 +41,20 @@ class MacroHelpers[CTPE <: Context](val c: CTPE) {
   }
 
   def isPrimitive(tpe: c.Type) = primitiveTypes.exists(tpe =:= _)
+
+  private def constructorExtractor(tree: Tree): List[List[Tree]] = {
+    def extract(tree: Tree, lst: List[List[Tree]]): List[List[Tree]] = tree match {
+      case Apply(tree, args: List[Symbol]) => extract(tree, args::lst)
+      case _ => lst
+    }
+    extract(tree, Nil)
+  }
+
+  def buildObjParamExtract(tree: Tree) = {
+    val Block(reader::newObjTree::Nil, _) = tree
+    val ValDef(_, _, _, objConstructor) = newObjTree
+
+    (constructorExtractor(objConstructor), reader)
+  }
+
 }

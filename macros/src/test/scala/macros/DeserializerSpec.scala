@@ -39,6 +39,7 @@ class DeserializerSpec extends GAESpecTemplate {
     val reader = GAEObjectReader(entity)
 
     val compound = deserialize[Compound](reader)
+    println(compound.ds_key)
 
     compound should equal (myCompound)
   }
@@ -55,4 +56,16 @@ class DeserializerSpec extends GAESpecTemplate {
     out should equal (three)
   }
 
+  it should "generate similar classes" in {
+    val writer = new GAEDSWriter("Simple")
+    macroimpls.Serializer.serialize(mySimple, writer)
+    val entity = writer.result
+
+    val reader = GAEObjectReader(entity)
+
+    val simple1 = deserialize[Simple](reader)
+    val simple2 = deserialize[Simple](reader)
+
+    simple1 should equal (simple2)
+  }
 }

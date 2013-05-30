@@ -14,15 +14,18 @@ object GAEObjectReader {
   def apply(entity: Entity) = new GAEObjectReader(entity, "")
 }
 
-private[macro_readers] class GAEObjectReader(entity: Entity, prefix: String) extends ObjectReader { self =>
+class GAEObjectReader(val entity: Entity, prefix: String) extends ObjectReader { self =>
 
   lazy val getKeys: Set[String] = entity.getProperties.keySet().asScala.toSet
 
   private val fullPrefix = if(prefix == "") "" else prefix + "."
 
   // Option forms
-  def optObjectReader(key: String): Option[ObjectReader] =
+  def optObjectReader(key: String): Option[GAEObjectReader] =
     Some(new GAEObjectReader(entity, fullPrefix + key))
+
+  override def getObjectReader(key: String): GAEObjectReader =
+    optObjectReader(key).getOrElse(failStructure(s"Cannot find reader with key $key", self))
 
   def optArrayReader(key: String): Option[ArrayIterator] = failStructure("GAE cant access sequences", self)
 

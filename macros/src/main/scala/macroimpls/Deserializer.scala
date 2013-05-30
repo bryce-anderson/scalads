@@ -2,38 +2,39 @@ package macroimpls
 
 import language.experimental.macros
 import scala.reflect.macros.Context
-import scala.Some
-import macro_readers.{Reader, ObjectReader, ArrayIterator}
 import macroimpls.macrohelpers.MacroHelpers
+import macro_readers.GAEObjectReader
 import java.text.SimpleDateFormat
 import exceptions.MappingException
+import util.EntityBacker
+import com.google.appengine.api.datastore.Entity
 
 
 object Deserializer {
 
   import java.util.Date
 
-  def deserialize[U](reader: Reader): U = macro deserializeImpl[U]
+  def deserialize[U](reader: GAEObjectReader): U with EntityBacker = macro deserializeImpl[U]
 
-  def deserializeImpl[U: c.WeakTypeTag](c: Context)(reader: c.Expr[Reader]): c.Expr[U] = {
+  def deserializeImpl[U: c.WeakTypeTag](c: Context)(reader: c.Expr[GAEObjectReader]): c.Expr[U with EntityBacker] = {
 
     val helpers = new MacroHelpers[c.type](c)
-    import helpers.{isPrimitive,LIT,typeArgumentTree, macroError}
+    import helpers.{isPrimitive,LIT,typeArgumentTree, macroError, buildObjParamExtract}
     import c.universe._
 
-    def rparseDate(field: c.Expr[String], reader: c.Expr[ObjectReader])  = reify {
+    def rparseDate(field: c.Expr[String], reader: c.Expr[GAEObjectReader])  = reify {
       new SimpleDateFormat().parse(rparseString(field, reader).splice)
     }
 
-    def rparseString(field: c.Expr[String], reader: c.Expr[ObjectReader]) = reify {
+    def rparseString(field: c.Expr[String], reader: c.Expr[GAEObjectReader]) = reify {
       reader.splice.getString(field.splice)
     }
 
-    def rparseSymbol(field: c.Expr[String], reader: c.Expr[ObjectReader]) = reify {
+    def rparseSymbol(field: c.Expr[String], reader: c.Expr[GAEObjectReader]) = reify {
       Symbol(rparseString(field, reader).splice)
     }
 
-    def rparseOption(tpe:Type, field: c.Expr[String], reader: c.Expr[ObjectReader]):Tree = {
+    def rparseOption(tpe:Type, field: c.Expr[String], reader: c.Expr[GAEObjectReader]):Tree = {
       val TypeRef(_, _, List(argTpe)) = tpe
       reify{
         try{
@@ -44,7 +45,7 @@ object Deserializer {
       }.tree
     }
 
-    def buildMap(tpe:Type, reader: c.Expr[ObjectReader]): c.Tree   = {
+    def buildMap(tpe:Type, reader: c.Expr[GAEObjectReader]): c.Tree   = {
       val TypeRef(_, _, keyTpe::valTpe::Nil) = tpe
       // Capable of parsing maps that contain primitives as keys, not only strings
       val kExpr = c.Expr[String](Ident("k"))
@@ -65,7 +66,7 @@ object Deserializer {
     }
 
     // builds the different fields of an Object or Map
-    def buildField(tpe: Type, fieldName: c.Expr[String], reader: c.Expr[ObjectReader]): Tree = {
+    def buildField(tpe: Type, fieldName: c.Expr[String], reader: c.Expr[GAEObjectReader]): Tree = {
       if (isPrimitive(tpe)) buildPrimitive(tpe, fieldName, reader)
       // The privileged types
       else if (tpe.erasure <:< typeOf[Option[_]]) {
@@ -73,11 +74,11 @@ object Deserializer {
       }
       else if (typeOf[Map[_, _]] <:< tpe.erasure) {
         val orNme = c.fresh("jsonReader$")
-        val orExpr = c.Expr[ObjectReader](Ident(orNme))
+        val orExpr = c.Expr[GAEObjectReader](Ident(orNme))
         val orTree = ValDef(
           Modifiers(),
           newTermName(orNme),
-          TypeTree(typeOf[ObjectReader]),
+          TypeTree(typeOf[GAEObjectReader]),
           reader.tree
         )
         Block(orTree, buildMap(tpe, orExpr))
@@ -88,7 +89,7 @@ object Deserializer {
       else  buildObject(tpe, reify{ reader.splice.getObjectReader(fieldName.splice)})
     }
 
-    def buildPrimitive(tpe: Type, field: c.Expr[String], reader: c.Expr[ObjectReader]) = {
+    def buildPrimitive(tpe: Type, field: c.Expr[String], reader: c.Expr[GAEObjectReader]) = {
       if      (tpe =:= typeOf[Int])         reify {reader.splice.getInt(field.splice)    }.tree
         // TODO: type Byte and Char
       else if (tpe =:= typeOf[Short])       reify {reader.splice.getInt(field.splice).asInstanceOf[Short]}.tree
@@ -109,7 +110,7 @@ object Deserializer {
       else throw new java.lang.NoSuchFieldException(s"Type '$tpe' is not a primitive!")
     }
 
-    def buildPrimitiveOpt(tpe: Type, field: c.Expr[String], reader: c.Expr[ObjectReader]): c.Expr[Option[_]] = {
+    def buildPrimitiveOpt(tpe: Type, field: c.Expr[String], reader: c.Expr[GAEObjectReader]): c.Expr[Option[_]] = {
       if      (tpe =:= typeOf[Int])         reify {reader.splice.optInt(field.splice)     }
       else if (tpe =:= typeOf[Short])       reify {reader.splice.optInt(field.splice).map(_.asInstanceOf[Short])}
       else if (tpe =:= typeOf[Byte])       reify {reader.splice.optInt(field.splice).map(_.asInstanceOf[Byte])}
@@ -134,18 +135,18 @@ object Deserializer {
     }
 
     // Builds a class and sets its fields if they are detected
-    def buildObject(tpe: Type, reader: c.Expr[ObjectReader]): Tree = {
+    def buildObject(tpe: Type, reader: c.Expr[GAEObjectReader]): Tree = {
       // Find some info on our object type
       val TypeRef(_, sym: Symbol, tpeArgs: List[Type]) = tpe
       val newObjTypeTree = typeArgumentTree(tpe)
 
       // Make the object reader tree bits
-      val orNme = c.fresh("jsonReader$")
-      val orExpr = c.Expr[ObjectReader](Ident(orNme))
+      val orNme = c.fresh("reader$")
+      val orExpr = c.Expr[GAEObjectReader](Ident(orNme))
       val orTree = ValDef(
         Modifiers(),
         newTermName(orNme),
-        TypeTree(typeOf[ObjectReader]),
+        TypeTree(typeOf[GAEObjectReader]),
         reader.tree
       )
 
@@ -182,7 +183,7 @@ object Deserializer {
       }
 
       def buildObjFromParams(ctorParams: List[List[Symbol]]): Tree =
-        New(newObjTypeTree, ctorParams.map(_.zipWithIndex.map {
+        ctorParams.map(_.zipWithIndex.map {
           case (pSym, index) =>
             // Change out the types if it has type parameters
             val pTpe = pSym.typeSignature.substituteTypes(sym.asClass.typeParams, tpeArgs)
@@ -190,8 +191,6 @@ object Deserializer {
 
             // If param has defaults, try to find the val in map, or call
             // default evaluation from its companion object
-            // TODO: is the sym.companionSymbol.isTerm the best way to check for NoSymbol?
-            // TODO: is there a way to get teh default values for the overloaded constructors?
             if (pSym.asTerm.isParamWithDefault && isPrimitive(pTpe) && sym.companionSymbol.isTerm) {
               reify {
                 buildPrimitiveOpt(pTpe, fieldName, orExpr).splice
@@ -213,8 +212,8 @@ object Deserializer {
                 }
               }.tree
             } else buildField(pTpe, fieldName, orExpr)
-          })
-        )
+          }).foldLeft[Tree](Select(New(newObjTypeTree), nme.CONSTRUCTOR)){(a ,b) => Apply(a, b) }
+
 
       val newObjTerm = newTermName(c.fresh("newObj$"))
       val newObjTree = ValDef(Modifiers(), newObjTerm, newObjTypeTree,
@@ -223,31 +222,50 @@ object Deserializer {
 
       Block(orTree::newObjTree::Nil, Ident(newObjTerm))
     }
-    
+
     val tpe = weakTypeOf[U]
 
+    // This will not be good as we will no longer have the same type
+    def extendWithEntityBacker(tree: Tree): c.Expr[U with EntityBacker] = {
+      val TypeRef(_, tpeSym, params) = tpe  // TODO: add type args
+      val TypeRef(_, backerSym, _) = typeOf[EntityBacker]
+      val (ctorTree: List[List[Tree]], readerTree) = buildObjParamExtract(tree)
+
+      val newTree = Block(List(
+        readerTree: Tree,
+        ClassDef(Modifiers(), newTypeName("$anon"), List(), Template(List(Ident(tpeSym), Ident(backerSym)),
+          emptyValDef, List(
+            ValDef(Modifiers(), newTermName("ds_backingEntity"), TypeTree(typeOf[Entity]), reify(reader.splice.entity).tree): Tree,
+            DefDef(Modifiers(), nme.CONSTRUCTOR, Nil, Nil::Nil, TypeTree(),
+              Block(
+                ctorTree.foldLeft[Tree](Select(Super(This(tpnme.EMPTY), tpnme.EMPTY), nme.CONSTRUCTOR))
+                  {(a,b: List[Tree]) => Apply(a,b)}::Nil,
+                Literal(Constant(()))
+              )
+            )
+          ))
+        )),
+        Apply(Select(New(Ident(newTypeName("$anon"))), nme.CONSTRUCTOR), List())
+      )
+      c.Expr[U with EntityBacker](newTree)
+    }
+    
+
+
     // The three fundamental types that can be deserialized
-    val expr = if (typeOf[Map[_, _]] <:< tpe.erasure) {
-      val i = c.Expr[U](buildMap(tpe, c.Expr[ObjectReader](Ident("r"))))
-      reify {
-        reader.splice match {
-          case r: ObjectReader => i.splice
-          case e => throw new IllegalStateException(s"Need reader type Object to read object fields. Found: ${e.getClass.toString}")
-        }
-      }
+    val typeExpr: c.Expr[U with EntityBacker] = {
+      val tree = buildObject(tpe,c.Expr[GAEObjectReader](Ident(newTermName("r"))))
+      extendWithEntityBacker(tree)
     }
-    else if (typeOf[List[_]] <:< tpe.erasure) {
-      macroError("Sequences cannot be pulled from the datastore")
-    } else {
-      val i = c.Expr[U](buildObject(tpe, c.Expr[ObjectReader](Ident("r"))))
-      reify {
-        reader.splice match {
-          case r: ObjectReader => i.splice
-          case e => throw new IllegalStateException(s"Need reader type Object to read object fields. Found: ${e.getClass.toString}")
-        }
+
+    val expr = reify {
+      val r = reader.splice
+      typeExpr.splice
       }
-    }
+
+    // TODO: need to modify the first tree to be a anonymous class backed by an entity
     println(expr)  // Debug
+
     expr
   }
 }
