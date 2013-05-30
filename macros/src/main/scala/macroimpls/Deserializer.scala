@@ -13,7 +13,9 @@ object Deserializer {
 
   import java.util.Date
 
-  def deserialize[U: c.WeakTypeTag](c: Context)(reader: c.Expr[Reader]): c.Expr[U] = {
+  def deserialize[U](reader: Reader): U = macro deserializeImpl[U]
+
+  def deserializeImpl[U: c.WeakTypeTag](c: Context)(reader: c.Expr[Reader]): c.Expr[U] = {
 
     val helpers = new MacroHelpers[c.type](c)
     import helpers.{isPrimitive,LIT,typeArgumentTree, macroError}
@@ -245,7 +247,7 @@ object Deserializer {
         }
       }
     }
-    //println(expr)  // Debug
+    println(expr)  // Debug
     expr
   }
 }

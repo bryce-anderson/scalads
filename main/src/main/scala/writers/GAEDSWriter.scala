@@ -10,21 +10,17 @@ import scala.collection.mutable.ListBuffer
  * @author Bryce Anderson
  *         Created on 5/27/13
  */
-class GAEDSWriter(valTpe: String, parentKey: Key = null) extends Writer[List[Entity]] {
+class GAEDSWriter(valTpe: String, parentKey: Key = null) extends Writer[Entity] {
 
-  private val entities = new ListBuffer[Entity]
-  private val ef = { (objType: String, parent: Key) =>
-    val e = new Entity(objType, parent)
-    entities += e
-    e
-  }
-  private var writer: DSWriter = new RootWriter(ef(valTpe, parentKey), ef)
+  private val e = new Entity(valTpe, parentKey)
 
-  def result = entities.result()
+  private var writer: DSWriter = new RootWriter(e)
 
-  def startArray() {  writer = writer.startArray() }
+  def result = e
 
-  def endArray() {  writer = writer.endArray() }
+  def startArray() {  sys.error("GAE Entities don't support Arrays") }
+
+  def endArray() {  sys.error("GAE Entities don't support Arrays") }
 
   def startObject(objType: String = "object") {  writer = writer.startObject(objType) }
 
@@ -58,83 +54,54 @@ class GAEDSWriter(valTpe: String, parentKey: Key = null) extends Writer[List[Ent
 }
 
 trait DSWriter { self =>
-  final type EntityFactory = (String, Key) => Entity
-
   protected def parent: DSWriter
   protected def entity: Entity
+  def startObject(objType: String = "object"): DSWriter
 
   private[writers] def handleVal(value: Any): DSWriter = error("handleVal")
 
-  protected def ef: EntityFactory
-
   protected final def error(op: String) = sys.error(s"Writer ${this.getClass.toString} cannot perform $op")
-
-  def startArray(): DSWriter = {
-    val e = ef("array", entity.getKey)
-    new ArrayWriter(e, self, ef)
-  }
-
-  def endArray(): DSWriter = parent
-
-  def startObject(objType: String = "object"): DSWriter = {
-    val e = ef(objType, entity.getKey)
-    new ObjectWriter(e, self, ef)
-  }
 
   def endObject(): DSWriter = parent
 
   def startField(name: String): DSWriter = error("startField")
 }
 
-class RootWriter(val rootEntity: Entity, val ef: DSWriter#EntityFactory) extends DSWriter {
+class RootWriter(val rootEntity: Entity) extends DSWriter {
 
   def parent: DSWriter = sys.error("RootWriter doesn't have a parent")
 
   private var finished = false
   protected def entity = rootEntity
 
-  override def startArray(): DSWriter = sys.error("Root Writer cannot start an array")
-
   override def startObject(objType: String): DSWriter = {
     if (finished) sys.error("RootWriter already started. Cannot start a new object!")
-    else new ObjectWriter(entity, this, ef)
+    else new ObjectWriter(entity, this, "")
   }
 
   override def endObject() = { finished = true; this }
 }
 
-private[writers] class ObjectWriter(val entity: Entity, val parent: DSWriter, val ef: DSWriter#EntityFactory) extends DSWriter { self =>
+private[writers] class ObjectWriter(val entity: Entity, val parent: DSWriter, prefix: String) extends DSWriter { self =>
   override def handleVal(value: Any): DSWriter = error("handleVal")
+
+  def startObject(objType: String): DSWriter = error("startObject")
+
   override def startField(name: String) = new DSWriter {
-    protected def ef = self.ef
     def entity = self.entity
     def parent = self
 
-    override def startObject(objType: String = "object"): DSWriter = {
-      val e = ef(objType, entity.getKey)
-      new ObjectWriter(e, self, ef)
-    }
+    val prefix = if(self.prefix == "") name else self.prefix + "." + name
 
-    override def startArray(): DSWriter = {
-      val e = ef("array", entity.getKey)
-      new ArrayWriter(e, self, ef)
+    override def startObject(objType: String = "object"): DSWriter = {
+      new ObjectWriter(entity, self, prefix)
     }
 
     override def handleVal(value: Any): DSWriter = {
-      self.entity.setProperty(name, value)
+      self.entity.setProperty(prefix, value)
       self
     }
   }
 }
 
-private[writers] class ArrayWriter(val entity: Entity, val parent: DSWriter, val ef: DSWriter#EntityFactory) extends DSWriter { self =>
-  private var index = 0
-  override def handleVal(value: Any): DSWriter = {
-    val e = ef(value.getClass.toString, entity.getKey)
-    e.setProperty("index", index)
-    index+=1
-    e.setProperty("value", value)
-    self
-  }
-}
 

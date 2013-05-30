@@ -34,27 +34,27 @@ trait ObjectReader extends Reader {
 
   // Direct forms with default impl based on the Option form
   def getObjectReader(key: String): ObjectReader =
-    optObjectReader(key).getOrElse(failStructure(s"JsonObject doesn't contain an object in field '$key'"))
+    optObjectReader(key).getOrElse(failStructure(s"ObjectReader doesn't contain an object in field '$key'"))
   def getArrayReader(key: String): ArrayIterator =
-    optArrayReader(key).getOrElse(failStructure(s"JsonObject doesn't contain an array in field '$key'"))
+    optArrayReader(key).getOrElse(failStructure(s"ObjectReader doesn't contain an array in field '$key'"))
   def getInt(key: String): Int =
-    optInt(key).getOrElse(failStructure(s"JsonObject doesn't contain an Int in field '$key'"))
+    optInt(key).getOrElse(failStructure(s"ObjectReader doesn't contain an Int in field '$key'"))
   def getLong(key: String): Long =
-    optLong(key).getOrElse(failStructure(s"JsonObject doesn't contain an Long in field '$key'"))
+    optLong(key).getOrElse(failStructure(s"ObjectReader doesn't contain an Long in field '$key'"))
   def getFloat(key: String): Float =
-    optFloat(key).getOrElse(failStructure(s"JsonObject doesn't contain a Float in field '$key'"))
+    optFloat(key).getOrElse(failStructure(s"ObjectReader doesn't contain a Float in field '$key'"))
   def getDouble(key: String): Double =
-    optDouble(key).getOrElse(failStructure(s"JsonObject doesn't contain a Double in field '$key'"))
+    optDouble(key).getOrElse(failStructure(s"ObjectReader doesn't contain a Double in field '$key'"))
   def getBigInt(key: String): BigInt =
-    optBigInt(key).getOrElse(failStructure(s"JsonObject doesn't contain a BigInt in field '$key'"))
+    optBigInt(key).getOrElse(failStructure(s"ObjectReader doesn't contain a BigInt in field '$key'"))
   def getBigDecimal(key: String): BigDecimal =
-    optBigDecimal(key).getOrElse(failStructure(s"JsonObject doesn't contain a BigDecimal in field '$key'"))
+    optBigDecimal(key).getOrElse(failStructure(s"ObjectReader doesn't contain a BigDecimal in field '$key'"))
   def getBool(key: String): Boolean =
-    optBool(key).getOrElse(failStructure(s"JsonObject doesn't contain a Boolean in field '$key'"))
+    optBool(key).getOrElse(failStructure(s"ObjectReader doesn't contain a Boolean in field '$key'"))
   def getString(key: String): String =
-    optString(key).getOrElse(failStructure(s"JsonObject doesn't contain a String in field '$key'"))
+    optString(key).getOrElse(failStructure(s"ObjectReader doesn't contain a String in field '$key'"))
   def getDate(key: String): Date =
-    optDate(key).getOrElse(failStructure(s"JsonObject doesn't contain a Date in field '$key'"))
+    optDate(key).getOrElse(failStructure(s"ObjectReader doesn't contain a Date in field '$key'"))
 }
 
 trait ArrayIterator extends Reader {
