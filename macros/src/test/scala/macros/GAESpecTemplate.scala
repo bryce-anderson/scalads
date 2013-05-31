@@ -17,8 +17,6 @@ class GAESpecTemplate extends FlatSpec with BeforeAndAfter with ShouldMatchers {
 
   before {  GAESpecTemplate.setUp(helper) }
 
-  def newEntity(obj: AnyRef, parent: Key = null) = new Entity(obj.getClass.toString, parent)
-
 }
 
 object GAESpecTemplate {

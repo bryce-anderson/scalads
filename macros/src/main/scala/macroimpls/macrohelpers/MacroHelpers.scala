@@ -19,10 +19,13 @@ class MacroHelpers[CTPE <: Context](val c: CTPE) {
     case _                                => Ident(t.typeSymbol.name)
   }
 
-  def classNameExpr(tpe: Type) = c.Expr[String](
-    Select(Select(Ident(newTermName(tpe.typeSymbol.name.decoded)),
-    newTermName("getClass")), newTermName("toString"))
-  )
+  def classNameExpr(tpe: Type) = c.Expr[String]{
+
+//    Select(Select(Ident(newTermName(tpe.typeSymbol.name.decoded)),
+//    newTermName("getClass")), newTermName("toString"))
+    println(tpe.typeSymbol.fullName)
+    Literal(Constant(tpe.typeSymbol.fullName))
+  }
 
   private lazy val primitiveTypes =  {
     c.typeOf[Int]::

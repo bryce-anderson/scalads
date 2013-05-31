@@ -15,6 +15,25 @@ import com.google.appengine.api.datastore.Query._
 
 object QueryMacros {
 
+  def findName(c: Context)(tree: c.Tree, name: c.Name): String = {
+    import c.universe._
+    def findName(tree: Tree, stack: List[String]): String = tree match {
+      case Select(Ident(inName), otherTree) if inName == name =>  // Finished
+        (otherTree.encodedName::stack).foldLeft(inName.encoded){(a, b) => a + "." + b }
+      case Select(Ident(inName), otherTree) if inName != name => throw new MatchError(tree)
+      case Select(inner, outer) => findName(inner, outer.encoded::stack)
+      //case e => println(s"Failed on tree: ${showRaw(e)}"); sys.error("")   // TODO: debug
+    }
+    //println(s"Finding name: ${showRaw(tree)}")
+    findName(tree, Nil)
+  }
+
+  def sortImpl[U: c.WeakTypeTag](c: Context {type PrefixType = Query[U]}): Query[U] = {
+
+    ???
+  }
+
+
   def filterImpl[U: c.WeakTypeTag](c: Context {type PrefixType = Query[U]})(f: c.Expr[U => Boolean]): c.Expr[Query[U]] = {
     import c.universe._
 
@@ -23,18 +42,6 @@ object QueryMacros {
     body match { // Make things simple
       case Block(_, _) => c.error(c.enclosingPosition, s"Filter must have single statement filter. Received: $body")
       case _ =>
-    }
-
-    def findName(tree: Tree) = {
-      def findName(tree: Tree, stack: List[String]): String = tree match {
-        case Select(Ident(inName), otherTree) if inName == name =>
-          (otherTree.encodedName::stack).foldLeft(inName.encoded){(a, b) => a + "." + b }
-        case Select(Ident(inName), otherTree) if inName != name => throw new MatchError(tree)
-        case Select(inner, outer) => findName(inner, outer.encoded::stack)
-        //case e => println(s"Failed on tree: ${showRaw(e)}"); sys.error("")   // TODO: debug
-      }
-      println(s"Finding name: ${showRaw(tree)}")
-      findName(tree, Nil)
     }
 
     def makeFilter(operation: Name, name: String, value: Tree): c.Expr[FilterPredicate] = {
@@ -68,9 +75,9 @@ object QueryMacros {
         println("making composite"); makeComposite(decompose(t1), decompose(t2), operator)
 
       case Apply(Select(firstTree, operation), List(secondTree)) =>
-        try { makeFilter(operation, findName(firstTree), secondTree) } catch {
+        try { makeFilter(operation, findName(c)(firstTree, name), secondTree) } catch {
           // Try it backwards
-          case e: MatchError => makeFilter(operation, findName(secondTree), firstTree)
+          case e: MatchError => makeFilter(operation, findName(c)(secondTree, name), firstTree)
         }
     } } catch {
       case e: MatchError => c.error(c.enclosingPosition, s"Cannot decompose operation the operation: $tree"); sys.error("")

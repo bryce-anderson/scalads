@@ -17,11 +17,11 @@ class SerializerSpec extends GAESpecTemplate {
   "DSWriter" should  "Write a simple entity" in {
 
     val a = Simple(0, "one")
-    val writer = new GAEDSWriter(newEntity(a))
+    val writer = GAEDSWriter[Simple]
     macroimpls.Serializer.serialize(a, writer)
     val ds = DatastoreServiceFactory.getDatastoreService()
     ds.put(writer.result)
-    ds.prepare(new Query(a.getClass.toString)).countEntities(withLimit(10)) should equal (1)
+    ds.prepare(new Query("macros.SerializerSpec.Simple")).countEntities(withLimit(10)) should equal (1)
   }
 
   it should "Store a compound object" in {
@@ -29,7 +29,7 @@ class SerializerSpec extends GAESpecTemplate {
 
     val a = Compound("Compound", Simple(0, "one"), "the end")
 
-    val writer = new GAEDSWriter(newEntity(a))
+    val writer = GAEDSWriter[Compound]
     macroimpls.Serializer.serialize(a, writer)
     val entity = writer.result
 
@@ -45,6 +45,6 @@ class SerializerSpec extends GAESpecTemplate {
       if (txn.isActive) txn.rollback()
     }
 
-    ds.prepare(new Query(a.getClass.toString)).countEntities(withLimit(10)) should equal (1)
+    ds.prepare(new Query("macros.SerializerSpec.Compound")).countEntities(withLimit(10)) should equal (1)
   }
 }

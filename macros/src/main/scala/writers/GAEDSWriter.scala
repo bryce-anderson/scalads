@@ -2,14 +2,20 @@ package writers
 
 import java.util.Date
 import com.google.appengine.api.datastore.Entity
-import com.google.appengine.api.datastore.KeyFactory
 import com.google.appengine.api.datastore.Key
-import scala.collection.mutable.ListBuffer
+import language.experimental.macros
 
 /**
  * @author Bryce Anderson
  *         Created on 5/27/13
  */
+
+object GAEDSWriter {
+  def apply[U]: GAEDSWriter = macro macroimpls.macrohelpers.UtilMacros.GAEDSWriterImplBare[U]
+  def apply[U](parent: Key): GAEDSWriter = macro macroimpls.macrohelpers.UtilMacros.GAEDSWriterImplKey[U]
+  def apply[U](parent: Entity): GAEDSWriter = macro macroimpls.macrohelpers.UtilMacros.GAEDSWriterImplEntity[U]
+}
+
 class GAEDSWriter(entity: Entity) extends Writer[Entity] {
 
   private var writer: DSWriter = new RootWriter(entity)
