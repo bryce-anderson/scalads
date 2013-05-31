@@ -263,10 +263,9 @@ object Deserializer {
     val expr = reify {
       val r = reader.splice
       typeExpr.splice
-      }
+    }
 
-    println(expr)  // Debug
-
+    //println(expr)  // Debug
     expr
   }
 }

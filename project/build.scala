@@ -21,18 +21,18 @@ object Settings {
 object build extends Build {
   
 
-  lazy val macros = Project(
+  lazy val macros: Project = Project(
     id = "ds-macros",
     base = file("macros"),
     settings = Settings.buildSettings
   ) dependsOn(main)
 
-  lazy val main = Project(
+  lazy val main: Project = Project(
     id = "ds-main",
     base = file("main"),
     settings = Settings.buildSettings ++ Seq(
       libraryDependencies += GoogleAppEngine
-    )
-  ) 
+    ) 
+  )
 }
 

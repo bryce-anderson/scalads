@@ -106,7 +106,7 @@ object Serializer {
       mapExpr(tpe, obj.tree).tree
     } else complexObject(tpe, obj.tree)
 
-    println(s"------------------ Debug: Generated Code ------------------\n $tree")
+    //println(s"------------------ Debug: Generated Code ------------------\n $tree")
     c.Expr[Unit](tree)
   }
 }
