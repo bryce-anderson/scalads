@@ -2,40 +2,53 @@ package util
 
 import language.experimental.macros
 
-import com.google.appengine.api.datastore.{Query => GQuery}
-import com.google.appengine.api.datastore.Query.{Filter, FilterOperator, CompositeFilterOperator}
+import com.google.appengine.api.datastore.{Query => GQuery, Key, DatastoreService}
+import com.google.appengine.api.datastore.Query.{SortDirection, Filter, FilterOperator, CompositeFilterOperator}
 import macroimpls.QueryMacros
-import com.google.appengine.api.datastore
 
 /**
  * @author Bryce Anderson
  *         Created on 5/30/13
  */
 
-trait Query[U] {
+trait Query[U] { self =>
 
-  protected def gQuery: GQuery  // The google api query backing this wrapper
+  protected def ds: DatastoreService
 
-  def filter(f: U => Boolean): Query[U] = macro QueryMacros.filterImpl[U]
+  protected val gQuery: GQuery  // The google api query backing this wrapper
 
-  def addFilter(filter: Filter): FilteredQuery[U] = new FilteredQuery[U](filter, gQuery)
+  def runQuery = ds.prepare(gQuery).asIterator()
 
-  def withParent(parent: U with EntityBacker): Query[U] = ??? // gQuery.setAncestor(parent.ds_key)
+  def filter(f: U => Boolean): FilteredQuery[U] = macro QueryMacros.filterImpl[U]
 
-  def toList: List[U with EntityBacker] = ???
+  def addFilter(filter: Filter): FilteredQuery[U] = new FilteredQuery[U](gQuery.setFilter(filter), ds)
+
+  def withParent(key: Key) = new Query[U] {
+    val gQuery = self.gQuery.setAncestor(key)
+    def ds = self.ds
+  }
+
+  def withParent(parent: U with EntityBacker): Query[U] = withParent(parent.ds_key)
+
+  def getIterator: Iterator[U with EntityBacker] = macro QueryMacros.getIteratorImpl[U]
 }
 
-class FilteredQuery[U] private[util](filter: Filter, val gQuery: GQuery) extends Query[U] {
+class FilteredQuery[U] private[util](val gQuery: GQuery, val ds: DatastoreService) extends Query[U] {
 
-  def sortAscBy(f: U => Any): FilteredQuery[U] = ???
+  override def withParent(parent: Key) = new FilteredQuery[U](gQuery.setAncestor(parent), ds)
 
-  def sortDecBy(f: U => Any): FilteredQuery[U] = ???
+  override def withParent(parent: U with EntityBacker) = withParent(parent.ds_key)
+
+  def sortAscBy(f: U => Any): FilteredQuery[U] = macro QueryMacros.sortImplAsc[U]
+
+  def sortDecBy(f: U => Any): FilteredQuery[U] = macro QueryMacros.sortImplDesc[U]
+
+  def sortBy(field: String, dir: SortDirection) = new FilteredQuery[U](gQuery.addSort(field, dir), ds)
 }
 
 object Query {
-  def apply[U] = new Query[U] {
-    protected def gQuery: GQuery = ??? // new GQuery(U)
-  }
+
+  def apply[U](implicit datastore: DatastoreService) = macro QueryMacros.ObjApplyImpl[U]
 
 }
 

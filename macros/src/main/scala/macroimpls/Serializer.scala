@@ -13,6 +13,25 @@ import com.google.appengine.api.datastore.{Key, Entity}
 
 // Intended to be the serialization side of the class builder
 object Serializer {
+
+  def serializeObject[U: c.WeakTypeTag](c: Context)(obj: c.Expr[U], parent: c.Expr[Key]): c.Expr[Entity] = {
+    val helpers = new MacroHelpers[c.type](c)
+
+    import helpers.{isPrimitive, LIT, macroError, classNameExpr}
+
+    import c.universe._
+    val tpe = weakTypeOf[U]
+    val name = classNameExpr(tpe)
+
+    val serializeExpr = serializeToEntityImpl[U](c)(obj, c.Expr[Entity](Ident(newTermName("e"))))
+
+    reify {
+      val e = new Entity(name.splice, parent.splice)
+      serializeExpr.splice
+      e
+    }
+  }
+
   def serializeToEntity[U](obj: U, entity: Entity): Unit = macro serializeToEntityImpl[U]
   def serializeToEntityImpl[U: c.WeakTypeTag](c: Context)(obj: c.Expr[U], entity: c.Expr[Entity]): c.Expr[Unit] = {
     import c.universe._

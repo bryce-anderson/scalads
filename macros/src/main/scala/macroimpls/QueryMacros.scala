@@ -2,9 +2,12 @@ package macroimpls
 
 import language.experimental.macros
 import scala.reflect.macros.Context
-import util.Query
+import util.{EntityBacker, FilteredQuery, Query}
 
 import com.google.appengine.api.datastore.Query._
+import com.google.appengine.api.datastore.{Query => GQuery, DatastoreService}
+import macro_readers.GAEObjectReader
+import macroimpls.macrohelpers.MacroHelpers
 
 /**
  * @author Bryce Anderson
@@ -15,11 +18,22 @@ import com.google.appengine.api.datastore.Query._
 
 object QueryMacros {
 
+  def ObjApplyImpl[U: c.WeakTypeTag](c: Context)(datastore: c.Expr[DatastoreService]): c.Expr[Query[U]] = {
+    val helpers = new MacroHelpers[c.type](c)
+    val nameExpr = helpers.classNameExpr(c.universe.weakTypeOf[U])
+    c.universe.reify {
+      new Query[U] {
+        protected def ds: DatastoreService = datastore.splice
+        protected val gQuery: GQuery = new GQuery(nameExpr.splice)
+      }
+    }
+  }
+
   def findName(c: Context)(tree: c.Tree, name: c.Name): String = {
     import c.universe._
     def findName(tree: Tree, stack: List[String]): String = tree match {
       case Select(Ident(inName), otherTree) if inName == name =>  // Finished
-        (otherTree.encodedName::stack).foldLeft(inName.encoded){(a, b) => a + "." + b }
+        stack.foldLeft(otherTree.decoded){(a, b) => a + "." + b }
       case Select(Ident(inName), otherTree) if inName != name => throw new MatchError(tree)
       case Select(inner, outer) => findName(inner, outer.encoded::stack)
       //case e => println(s"Failed on tree: ${showRaw(e)}"); sys.error("")   // TODO: debug
@@ -28,13 +42,53 @@ object QueryMacros {
     findName(tree, Nil)
   }
 
-  def sortImpl[U: c.WeakTypeTag](c: Context {type PrefixType = Query[U]}): Query[U] = {
+  def sortImplGeneric[U: c.WeakTypeTag](c: Context {type PrefixType = FilteredQuery[U]})(f: c.Expr[U => Any], dir: c.Expr[SortDirection]): c.Expr[FilteredQuery[U]] = {
+    import c.universe._
 
-    ???
+    val Function(List(ValDef(_, name, _, _)), body) = f.tree
+    val nameStr = c.Expr[String](Literal(Constant(findName(c)(body, name))))
+
+    val result = reify{
+      c.prefix.splice.sortBy(nameStr.splice, dir.splice)
+    }
+    println(result.tree)
+    result
+  }
+
+  def sortImplAsc[U: c.WeakTypeTag](c: Context {type PrefixType = FilteredQuery[U]})(f: c.Expr[U => Any]): c.Expr[FilteredQuery[U]] = {
+    import c.universe._
+    sortImplGeneric(c)(f, reify(SortDirection.ASCENDING))
+  }
+
+  def sortImplDesc[U: c.WeakTypeTag](c: Context {type PrefixType = FilteredQuery[U]})(f: c.Expr[U => Any]): c.Expr[FilteredQuery[U]] = {
+    import c.universe._
+    sortImplGeneric(c)(f, reify(SortDirection.DESCENDING))
+  }
+
+  def getIteratorImpl[U: c.WeakTypeTag](c: Context { type PrefixType = Query[U]}): c.Expr[Iterator[U with EntityBacker]] = {
+    import c.universe._
+
+    val deserializeExpr = Deserializer.deserializeImpl[U](c)(c.Expr[GAEObjectReader](Ident(newTermName("reader"))))
+
+    val result = reify {
+      new Iterator[U with EntityBacker] {
+
+        private val it = c.prefix.splice.runQuery
+
+        def hasNext: Boolean = it.hasNext
+
+        def next(): U with EntityBacker = {
+          val reader = GAEObjectReader(it.next())
+          deserializeExpr.splice
+        }
+      }
+    }
+    println(result)
+    result
   }
 
 
-  def filterImpl[U: c.WeakTypeTag](c: Context {type PrefixType = Query[U]})(f: c.Expr[U => Boolean]): c.Expr[Query[U]] = {
+  def filterImpl[U: c.WeakTypeTag](c: Context {type PrefixType = Query[U]})(f: c.Expr[U => Boolean]): c.Expr[FilteredQuery[U]] = {
     import c.universe._
 
     val Function(List(ValDef(_, name, _, _)), body) = f.tree

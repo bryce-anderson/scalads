@@ -19,7 +19,7 @@ object Deserializer {
   def deserializeImpl[U: c.WeakTypeTag](c: Context)(reader: c.Expr[GAEObjectReader]): c.Expr[U with EntityBacker] = {
 
     val helpers = new MacroHelpers[c.type](c)
-    import helpers.{isPrimitive,LIT,typeArgumentTree, macroError, buildObjParamExtract}
+    import helpers.{isPrimitive, LIT, typeArgumentTree, macroError, buildObjParamExtract}
     import c.universe._
 
     def rparseDate(field: c.Expr[String], reader: c.Expr[GAEObjectReader])  = reify {
