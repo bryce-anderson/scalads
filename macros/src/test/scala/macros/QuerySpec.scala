@@ -64,7 +64,7 @@ class QuerySpec extends GAESpecTemplate {
       .filter(_.in > 0)
       .sortAscBy(_.in)
       .sortDecBy(_.in2)
-       .getIterator.toList
+      .getIterator.toList
 
     results.length should equal (9)
   }

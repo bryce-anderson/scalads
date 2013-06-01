@@ -2,7 +2,7 @@ package macroimpls
 
 import language.experimental.macros
 import scala.reflect.macros.Context
-import util.{EntityBacker, FilteredQuery, Query}
+import util.{EntityBacker, Query}
 
 import com.google.appengine.api.datastore.Query._
 import com.google.appengine.api.datastore.{Query => GQuery, DatastoreService}
@@ -21,12 +21,7 @@ object QueryMacros {
   def ObjApplyImpl[U: c.WeakTypeTag](c: Context)(datastore: c.Expr[DatastoreService]): c.Expr[Query[U]] = {
     val helpers = new MacroHelpers[c.type](c)
     val nameExpr = helpers.classNameExpr(c.universe.weakTypeOf[U])
-    c.universe.reify {
-      new Query[U] {
-        protected def ds: DatastoreService = datastore.splice
-        protected val gQuery: GQuery = new GQuery(nameExpr.splice)
-      }
-    }
+    c.universe.reify (new Query[U](datastore.splice, new GQuery(nameExpr.splice)))
   }
 
   def findName(c: Context)(tree: c.Tree, name: c.Name): String = {
@@ -42,7 +37,7 @@ object QueryMacros {
     findName(tree, Nil)
   }
 
-  def sortImplGeneric[U: c.WeakTypeTag](c: Context {type PrefixType = FilteredQuery[U]})(f: c.Expr[U => Any], dir: c.Expr[SortDirection]): c.Expr[FilteredQuery[U]] = {
+  def sortImplGeneric[U: c.WeakTypeTag](c: Context {type PrefixType = Query[U]})(f: c.Expr[U => Any], dir: c.Expr[SortDirection]): c.Expr[Query[U]] = {
     import c.universe._
 
     val Function(List(ValDef(_, name, _, _)), body) = f.tree
@@ -55,12 +50,12 @@ object QueryMacros {
     result
   }
 
-  def sortImplAsc[U: c.WeakTypeTag](c: Context {type PrefixType = FilteredQuery[U]})(f: c.Expr[U => Any]): c.Expr[FilteredQuery[U]] = {
+  def sortImplAsc[U: c.WeakTypeTag](c: Context {type PrefixType = Query[U]})(f: c.Expr[U => Any]): c.Expr[Query[U]] = {
     import c.universe._
     sortImplGeneric(c)(f, reify(SortDirection.ASCENDING))
   }
 
-  def sortImplDesc[U: c.WeakTypeTag](c: Context {type PrefixType = FilteredQuery[U]})(f: c.Expr[U => Any]): c.Expr[FilteredQuery[U]] = {
+  def sortImplDesc[U: c.WeakTypeTag](c: Context {type PrefixType = Query[U]})(f: c.Expr[U => Any]): c.Expr[Query[U]] = {
     import c.universe._
     sortImplGeneric(c)(f, reify(SortDirection.DESCENDING))
   }
@@ -83,12 +78,12 @@ object QueryMacros {
         }
       }
     }
-    println(result)
+    //println(result)
     result
   }
 
 
-  def filterImpl[U: c.WeakTypeTag](c: Context {type PrefixType = Query[U]})(f: c.Expr[U => Boolean]): c.Expr[FilteredQuery[U]] = {
+  def filterImpl[U: c.WeakTypeTag](c: Context {type PrefixType = Query[U]})(f: c.Expr[U => Boolean]): c.Expr[Query[U]] = {
     import c.universe._
 
     val Function(List(ValDef(_, name, _, _)), body) = f.tree
@@ -141,7 +136,7 @@ object QueryMacros {
     println(s"------------------Body:\n${showRaw(body)}")
     println(s"----------------- Decomposed:\n${filter.tree}")
 
-    reify{c.prefix.splice.addFilter(filter.splice)}
+    reify{c.prefix.splice.setFilter(filter.splice)}
   }
 
 }

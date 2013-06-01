@@ -9,6 +9,7 @@ import macrohelpers.MacroHelpers
 
 import writers.{GAEDSWriter, Writer}
 import com.google.appengine.api.datastore.{Key, Entity}
+import util.EntityBacker
 
 
 // Intended to be the serialization side of the class builder
@@ -120,6 +121,9 @@ object Serializer {
 
 
     val tpe = weakTypeOf[U]
+
+    if(tpe <:< typeOf[EntityBacker])
+      c.error(c.enclosingPosition, s"Cannot directly serialize 'backed' entities. Type $tpe extends EntityBacker")
 
     val tree = if(tpe <:< typeOf[scala.collection.GenMap[_, _]]) {
       mapExpr(tpe, obj.tree).tree

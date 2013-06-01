@@ -11,9 +11,14 @@ import scala.reflect.macros.Context
  */
 object Datastore {
 
-  def put[U](obj: U, ds: DatastoreService): Unit = macro putImpl[U]
+  def test {
+    val a = com.google.appengine.api.datastore.DatastoreServiceFactory.getAsyncDatastoreService
 
-  def putImpl[U: c.WeakTypeTag](c: Context)(obj: c.Expr[U], ds: c.Expr[DatastoreService]): c.Expr[Unit] = {
+  }
+
+  def put[U](obj: U, ds: DatastoreService): Key = macro putImpl[U]
+
+  def putImpl[U: c.WeakTypeTag](c: Context)(obj: c.Expr[U], ds: c.Expr[DatastoreService]): c.Expr[Key] = {
     import c.universe._
 
     val serializeExpr = macroimpls.Serializer.serializeObject[U](c)(obj, reify(null: Key))
