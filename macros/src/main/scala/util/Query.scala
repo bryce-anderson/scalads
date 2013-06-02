@@ -2,7 +2,7 @@ package util
 
 import language.experimental.macros
 
-import com.google.appengine.api.datastore.{Query => GQuery, Key, DatastoreService, FetchOptions}
+import com.google.appengine.api.datastore.{Query => GQuery, Key, DatastoreService, FetchOptions, Cursor}
 import com.google.appengine.api.datastore.Query.{SortDirection, Filter}
 import macroimpls.QueryMacros
 
@@ -13,7 +13,22 @@ import macroimpls.QueryMacros
 
 class Query[U](ds: DatastoreService, gQuery: GQuery) { self =>
 
-  def runQuery = ds.prepare(gQuery).asIterator()
+  protected val fetchOptions = FetchOptions.Builder.withDefaults()
+
+  def limit(size: Int) = new Query[U](ds, gQuery) {
+    override val fetchOptions = self.fetchOptions.limit(size)
+  }
+
+  def withEndCursor(offset: String) = new Query[U](ds, gQuery) {
+    override val fetchOptions = self.fetchOptions.endCursor(Cursor.fromWebSafeString(offset))
+  }
+
+  def withStartCursor(offset: String) = new Query[U](ds, gQuery) {
+    override val fetchOptions = self.fetchOptions.startCursor(Cursor.fromWebSafeString(offset))
+  }
+
+  // TODO: This should probably be a new object representing the returned results and its cursor
+  def runQuery = ds.prepare(gQuery).asQueryResultIterator(fetchOptions)
 
   def setFilter(filter: Filter): Query[U] = new Query[U](ds, gQuery.setFilter(filter))
 
@@ -23,19 +38,18 @@ class Query[U](ds: DatastoreService, gQuery: GQuery) { self =>
 
   def sortBy(field: String, dir: SortDirection) = new Query[U](ds, gQuery.addSort(field, dir))
 
-  def getIterator: Iterator[U with EntityBacker] =  macro QueryMacros.getIteratorImpl[U]
+  def getIterator: QueryIterator[U with EntityBacker] =  macro QueryMacros.getIteratorImpl[U]
 
   def sortAscBy(f: U => Any): Query[U] =            macro QueryMacros.sortImplAsc[U]
 
   def sortDecBy(f: U => Any): Query[U] =            macro QueryMacros.sortImplDesc[U]
 
   def filter(f: U => Boolean): Query[U] =           macro QueryMacros.filterImpl[U]
-
 }
 
 object Query {
 
-  def apply[U](implicit datastore: DatastoreService) = macro QueryMacros.ObjApplyImpl[U]
+  def apply[U](implicit datastore: DatastoreService):Query[U] = macro QueryMacros.ObjApplyImpl[U]
 
 }
 

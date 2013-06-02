@@ -2,7 +2,7 @@ package macroimpls
 
 import language.experimental.macros
 import scala.reflect.macros.Context
-import util.{EntityBacker, Query}
+import util.{EntityBacker, Query, QueryIterator}
 
 import com.google.appengine.api.datastore.Query._
 import com.google.appengine.api.datastore.{Query => GQuery, DatastoreService}
@@ -60,23 +60,17 @@ object QueryMacros {
     sortImplGeneric(c)(f, reify(SortDirection.DESCENDING))
   }
 
-  def getIteratorImpl[U: c.WeakTypeTag](c: Context { type PrefixType = Query[U]}): c.Expr[Iterator[U with EntityBacker]] = {
+  def getIteratorImpl[U: c.WeakTypeTag](c: Context { type PrefixType = Query[U]}): c.Expr[QueryIterator[U with EntityBacker]] = {
     import c.universe._
 
     val deserializeExpr = Deserializer.deserializeImpl[U](c)(c.Expr[GAEObjectReader](Ident(newTermName("reader"))))
 
     val result = reify {
-      new Iterator[U with EntityBacker] {
-
-        private val it = c.prefix.splice.runQuery
-
-        def hasNext: Boolean = it.hasNext
-
-        def next(): U with EntityBacker = {
-          val reader = GAEObjectReader(it.next())
+      new QueryIterator[U with EntityBacker](c.prefix.splice.runQuery, {
+        entity =>
+          val reader = GAEObjectReader(entity)
           deserializeExpr.splice
-        }
-      }
+      })
     }
     //println(result)
     result

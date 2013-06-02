@@ -18,7 +18,7 @@ object Serializer {
   def serializeObject[U: c.WeakTypeTag](c: Context)(obj: c.Expr[U], parent: c.Expr[Key]): c.Expr[Entity] = {
     val helpers = new MacroHelpers[c.type](c)
 
-    import helpers.{isPrimitive, LIT, macroError, classNameExpr}
+    import helpers.{classNameExpr}
 
     import c.universe._
     val tpe = weakTypeOf[U]
