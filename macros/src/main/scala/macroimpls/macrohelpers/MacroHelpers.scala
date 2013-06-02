@@ -20,7 +20,7 @@ class MacroHelpers[CTPE <: Context](val c: CTPE) {
   }
 
   def classNameExpr(tpe: Type) = c.Expr[String]{
-    println(tpe.typeSymbol.fullName)
+    // println(tpe.typeSymbol.fullName)
     Literal(Constant(tpe.typeSymbol.fullName))
   }
 

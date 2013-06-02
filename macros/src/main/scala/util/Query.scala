@@ -27,18 +27,17 @@ class Query[U](ds: DatastoreService, gQuery: GQuery) { self =>
     override val fetchOptions = self.fetchOptions.startCursor(Cursor.fromWebSafeString(offset))
   }
 
-  // TODO: This should probably be a new object representing the returned results and its cursor
   def runQuery = ds.prepare(gQuery).asQueryResultIterator(fetchOptions)
 
   def setFilter(filter: Filter): Query[U] = new Query[U](ds, gQuery.setFilter(filter))
 
   def withParent(key: Key) = new Query[U](ds, gQuery.setAncestor(key))
 
-  def withParent(parent: U with EntityBacker): Query[U] = withParent(parent.ds_key)
+  def withParent(parent: U with EntityBacker[U]): Query[U] = withParent(parent.ds_key)
 
   def sortBy(field: String, dir: SortDirection) = new Query[U](ds, gQuery.addSort(field, dir))
 
-  def getIterator: QueryIterator[U with EntityBacker] =  macro QueryMacros.getIteratorImpl[U]
+  def getIterator: QueryIterator[U with EntityBacker[U]] =  macro QueryMacros.getIteratorImpl[U]
 
   def sortAscBy(f: U => Any): Query[U] =            macro QueryMacros.sortImplAsc[U]
 

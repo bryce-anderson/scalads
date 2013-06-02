@@ -76,7 +76,7 @@ class QuerySpec extends GAESpecTemplate {
 
     results.length should equal (3)
 
-    val results2: util.QueryIterator[Test with EntityBacker] = ds.query[Test]
+    val results2: util.QueryIterator[Test with EntityBacker[Test]] = ds.query[Test]
       .limit(3)
       .getIterator
 

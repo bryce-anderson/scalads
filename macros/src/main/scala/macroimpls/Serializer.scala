@@ -122,7 +122,7 @@ object Serializer {
 
     val tpe = weakTypeOf[U]
 
-    if(tpe <:< typeOf[EntityBacker])
+    if(tpe <:< typeOf[EntityBacker[_]])
       c.error(c.enclosingPosition, s"Cannot directly serialize 'backed' entities. Type $tpe extends EntityBacker")
 
     val tree = if(tpe <:< typeOf[scala.collection.GenMap[_, _]]) {

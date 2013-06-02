@@ -24,8 +24,8 @@ object GAESpecTemplate {
   private val lock = new Object
 
   def setUp(helper: LocalServiceTestHelper) = lock.synchronized {
+    if(count == 0) helper.setUp()
     count += 1
-    helper.setUp()
   }
 
   def tearDown(helper: LocalServiceTestHelper) = lock.synchronized {

@@ -9,7 +9,8 @@ import scala.collection.JavaConverters._
  *         Created on 6/1/13
  */
 
-class QueryIterator[+U <: EntityBacker](it: QueryResultIterator[Entity], f: Entity => U) extends Iterator[U] {
+class QueryIterator[+U <: EntityBacker[_]]
+    (it: QueryResultIterator[Entity], val deserializer: Entity => U) extends Iterator[U] {
 
   def getCursor(): String = it.getCursor.toWebSafeString
 
@@ -19,5 +20,5 @@ class QueryIterator[+U <: EntityBacker](it: QueryResultIterator[Entity], f: Enti
 
   override def hasNext(): Boolean = it.hasNext
 
-  override def next(): U = f(it.next())
+  override def next(): U = deserializer(it.next())
 }

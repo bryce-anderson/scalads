@@ -1,6 +1,7 @@
 package macros
 
 import util.Datastore
+import com.google.appengine.api.datastore.Entity
 
 /**
  * @author Bryce Anderson
@@ -41,6 +42,38 @@ class DatastoreSpec extends GAESpecTemplate {
   }
 
   it should "set parents correctly" in {
+    val t1 = new Entity("Junk")
+    val t2 = Test(1, "key")
+    val t3 = Test(2, "key")
+    val parent = ds.put(t1)
+    ds.put(t2, parent)
+    ds.put(t3)
+
+    ds.query[Test].withParent(parent)
+      .getIterator.length should equal (1)
+
+    ds.query[Test]
+      .filter(_.in2 == "key")
+      .getIterator.length should equal (2)
+  }
+
+  it should "update entities" in {
+
+    case class Thing(in: Int)
+
+    0 until 10 map { i => ds.put(Thing(i))}
+
+    val it = ds.query[Thing].getIterator
+    ds.update(it){
+      case Thing(i) if (i%2 == 0) => Some(Thing(-2))
+      case _ => None
+    }
+
+    val length = ds.query[Thing]
+      .filter(_.in == -2)
+      .getIterator.length
+
+    length should equal (5)
 
   }
 }

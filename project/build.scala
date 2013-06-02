@@ -24,7 +24,7 @@ object build extends Build {
   lazy val macros: Project = Project(
     id = "ds-macros",
     base = file("macros"),
-    settings = Settings.buildSettings
+    settings = Settings.buildSettings ++ Seq(parallelExecution in Test := false)
   ) dependsOn(main)
 
   lazy val main: Project = Project(

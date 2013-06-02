@@ -58,13 +58,13 @@ object QueryMacros {
     sortImplGeneric(c)(f, reify(SortDirection.DESCENDING))
   }
 
-  def getIteratorImpl[U: c.WeakTypeTag](c: Context { type PrefixType = Query[U]}): c.Expr[QueryIterator[U with EntityBacker]] = {
+  def getIteratorImpl[U: c.WeakTypeTag](c: Context { type PrefixType = Query[U]}): c.Expr[QueryIterator[U with EntityBacker[U]]] = {
     import c.universe._
 
     val deserializeExpr = Deserializer.deserializeImpl[U](c)(c.Expr[GAEObjectReader](Ident(newTermName("reader"))))
 
     val result = reify {
-      new QueryIterator[U with EntityBacker](c.prefix.splice.runQuery, {
+      new QueryIterator[U with EntityBacker[U]](c.prefix.splice.runQuery, {
         entity =>
           val reader = GAEObjectReader(entity)
           deserializeExpr.splice
@@ -112,7 +112,8 @@ object QueryMacros {
         ) => decompose(Apply(Select(tree1, operator), tree2)) // Repackage
 
       case Apply(Select(t1 @ Apply(_ , _), operator), List(t2)) =>
-        println("making composite"); makeComposite(decompose(t1), decompose(t2), operator)
+        //println("making composite")
+        makeComposite(decompose(t1), decompose(t2), operator)
 
       case Apply(Select(firstTree, operation), List(secondTree)) =>
         try { makeFilter(operation, findName(c)(firstTree, name), secondTree) } catch {

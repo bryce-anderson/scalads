@@ -14,9 +14,9 @@ object Deserializer {
 
   import java.util.Date
 
-  def deserialize[U](reader: GAEObjectReader): U with EntityBacker = macro deserializeImpl[U]
+  def deserialize[U](reader: GAEObjectReader): U with EntityBacker[U] = macro deserializeImpl[U]
 
-  def deserializeImpl[U: c.WeakTypeTag](c: Context)(reader: c.Expr[GAEObjectReader]): c.Expr[U with EntityBacker] = {
+  def deserializeImpl[U: c.WeakTypeTag](c: Context)(reader: c.Expr[GAEObjectReader]): c.Expr[U with EntityBacker[U]] = {
 
     val helpers = new MacroHelpers[c.type](c)
     import helpers.{isPrimitive, LIT, typeArgumentTree, macroError, buildObjParamExtract}
@@ -225,19 +225,18 @@ object Deserializer {
 
     val tpe = weakTypeOf[U]
 
-    // This will not be good as we will no longer have the same type
-    def extendWithEntityBacker(tree: Tree): c.Expr[U with EntityBacker] = {
+    def extendWithEntityBacker(tree: Tree): c.Expr[U with EntityBacker[U]] = {
       val TypeRef(_, tpeSym, params) = tpe  // TODO: add type args
-      val TypeRef(_, backerSym, _) = typeOf[EntityBacker]
+      val TypeRef(_, backerSym, _) = typeOf[EntityBacker[Any]]
       val (ctorTree: List[List[Tree]], readerTree) = buildObjParamExtract(tree)
 
       val updateTree = Serializer.serializeToEntityImpl[U](c)(
-        c.Expr[U](Ident(newTermName("self"))), c.Expr[Entity](Ident(newTermName("ds_backingEntity")))
+        c.Expr[U](Ident(newTermName("obj"))), c.Expr[Entity](Ident(newTermName("entity")))
       ).tree
 
       val newTree = Block(List(
         readerTree: Tree,
-        ClassDef(Modifiers(Flag.FINAL), newTypeName("$anon"), List(), Template(List(Ident(tpeSym), Ident(backerSym)),
+        ClassDef(Modifiers(Flag.FINAL), newTypeName("$anon"), List(), Template(List(Ident(tpeSym), AppliedTypeTree(Ident(backerSym), List(Ident(tpeSym)))),
           ValDef(Modifiers(Flag.PRIVATE), newTermName("self"), TypeTree(), EmptyTree) , List(
             ValDef(Modifiers(), newTermName("ds_backingEntity"), TypeTree(typeOf[Entity]), reify(reader.splice.entity).tree): Tree,
             DefDef(Modifiers(), nme.CONSTRUCTOR, Nil, Nil::Nil, TypeTree(),
@@ -247,15 +246,18 @@ object Deserializer {
                 Literal(Constant(()))
               )
             ),
-            DefDef(Modifiers(), newTermName("ds_updateEntity"), Nil, Nil::Nil, TypeTree(typeOf[Unit]), updateTree)
+            DefDef(Modifiers(), newTermName("ds_serialize"), Nil, List(
+              ValDef(Modifiers(Flag.PARAM), newTermName("obj"), typeArgumentTree(tpe), EmptyTree)::
+              ValDef(Modifiers(Flag.PARAM), newTermName("entity"), TypeTree(typeOf[Entity]), EmptyTree)::Nil
+            ), TypeTree(typeOf[Unit]), updateTree)
           ))
         )),
         Apply(Select(New(Ident(newTypeName("$anon"))), nme.CONSTRUCTOR), List())
       )
-      c.Expr[U with EntityBacker](newTree)
+      c.Expr[U with EntityBacker[U]](newTree)
     }
 
-    val typeExpr: c.Expr[U with EntityBacker] = {
+    val typeExpr: c.Expr[U with EntityBacker[U]] = {
       val tree = buildObject(tpe,c.Expr[GAEObjectReader](Ident(newTermName("r"))))
       extendWithEntityBacker(tree)
     }

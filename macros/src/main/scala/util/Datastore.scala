@@ -6,6 +6,7 @@ import collection.JavaConverters._
 import language.experimental.macros
 import scala.reflect.macros.Context
 import macroimpls.QueryMacros
+import scala.collection.mutable.ListBuffer
 
 /**
  * @author Bryce Anderson
@@ -21,27 +22,37 @@ class Datastore(val ds: DatastoreService) {
 
   def delete(entity: Entity):Unit = ds.delete(entity.getKey)
 
-  def delete(entity: EntityBacker):Unit = delete(entity.ds_backingEntity)
+  def delete(entity: EntityBacker[_]):Unit = delete(entity.ds_backingEntity)
 
-  def put(obj: EntityBacker) {
+  def update[U](it: QueryIterator[U with EntityBacker[U]])(f: U => Option[U]) {
+    val newEntities = new ListBuffer[Entity]
+    it.foreach { i =>
+      f(i) match {
+        case Some(r) if r != i =>
+          i.ds_serialize(r, i.ds_backingEntity)
+          newEntities += i.ds_backingEntity
+        case None =>
+      }
+    }
+    put(newEntities.toList: Iterable[Entity])
+  }
+
+  def put(obj: EntityBacker[_]) {
     obj.ds_updateEntity
     put(obj.ds_backingEntity)
   }
 
-  def put(entity: Entity): Unit = ds.put(entity)
+  def put(entities: Iterable[Entity]): Unit = ds.put(entities.asJava)
 
-
-  def put(objs: Iterable[EntityBacker]) {
-    ds.put(objs.map{e => e.ds_updateEntity; e.ds_backingEntity}.asJava)
-  }
+  def put(entity: Entity): Key = ds.put(entity)
 
   def query[U]: Query[U] = macro Datastore.queryImpl[U]
 
-  def put[U](obj: U) = macro Datastore.putImplNoKey[U]
+  def put[U](obj: U): Key = macro Datastore.putImplNoKey[U]
 
   def put[U](obj: U, parent: Key): Key = macro Datastore.putImpl[U]
 
-  def put[U](obj: U, parent: EntityBacker) = macro Datastore.putImplBacked[U]
+  def put[U](obj: U, parent: EntityBacker[_]): Key = macro Datastore.putImplBacked[U]
 }
 
 object Datastore {
@@ -50,7 +61,7 @@ object Datastore {
   def queryImpl[U: c.WeakTypeTag](c: Context { type PrefixType = Datastore }): c.Expr[Query[U]] =
     QueryMacros.ObjApplyImpl[U](c)(c.universe.reify(c.prefix.splice.ds))
 
-  def putImplBacked[U: c.WeakTypeTag](c: Context {type PrefixType = Datastore})(obj: c.Expr[U], parent: c.Expr[EntityBacker]): c.Expr[Key] =
+  def putImplBacked[U: c.WeakTypeTag](c: Context {type PrefixType = Datastore})(obj: c.Expr[U], parent: c.Expr[EntityBacker[_]]): c.Expr[Key] =
     putImpl[U](c)(obj, c.universe.reify(parent.splice.ds_key))
 
   def putImplNoKey[U: c.WeakTypeTag](c: Context {type PrefixType = Datastore})(obj: c.Expr[U]): c.Expr[Key] =
