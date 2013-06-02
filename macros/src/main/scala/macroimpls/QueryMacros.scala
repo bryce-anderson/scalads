@@ -33,7 +33,6 @@ object QueryMacros {
       case Select(inner, outer) => findName(inner, outer.encoded::stack)
       //case e => println(s"Failed on tree: ${showRaw(e)}"); sys.error("")   // TODO: debug
     }
-    //println(s"Finding name: ${showRaw(tree)}")
     findName(tree, Nil)
   }
 
@@ -46,7 +45,6 @@ object QueryMacros {
     val result = reify{
       c.prefix.splice.sortBy(nameStr.splice, dir.splice)
     }
-    println(result.tree)
     result
   }
 
@@ -72,7 +70,6 @@ object QueryMacros {
           deserializeExpr.splice
       })
     }
-    //println(result)
     result
   }
 
@@ -127,8 +124,8 @@ object QueryMacros {
     }
 
     val filter = decompose(body)
-    println(s"------------------Body:\n${showRaw(body)}")
-    println(s"----------------- Decomposed:\n${filter.tree}")
+    //println(s"------------------Body:\n${showRaw(body)}")
+    //println(s"----------------- Decomposed:\n${filter.tree}")
 
     reify{c.prefix.splice.setFilter(filter.splice)}
   }

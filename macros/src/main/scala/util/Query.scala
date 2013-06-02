@@ -47,9 +47,3 @@ class Query[U](ds: DatastoreService, gQuery: GQuery) { self =>
   def filter(f: U => Boolean): Query[U] =           macro QueryMacros.filterImpl[U]
 }
 
-object Query {
-
-  def apply[U](implicit datastore: DatastoreService):Query[U] = macro QueryMacros.ObjApplyImpl[U]
-
-}
-

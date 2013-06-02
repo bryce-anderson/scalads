@@ -126,10 +126,15 @@ object Serializer {
       c.error(c.enclosingPosition, s"Cannot directly serialize 'backed' entities. Type $tpe extends EntityBacker")
 
     val tree = if(tpe <:< typeOf[scala.collection.GenMap[_, _]]) {
-      mapExpr(tpe, obj.tree).tree
-    } else complexObject(tpe, obj.tree)
+      mapExpr(tpe, Ident(newTermName("tmp"))).tree
+    } else complexObject(tpe, Ident(newTermName("tmp")))
 
     //println(s"------------------ Debug: Generated Code ------------------\n $tree")
-    c.Expr[Unit](tree)
+    val result = reify {
+      val tmp = obj.splice
+      c.Expr[Unit](tree).splice
+    }
+    //println(result)
+    result
   }
 }

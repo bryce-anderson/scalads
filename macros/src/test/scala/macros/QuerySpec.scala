@@ -1,9 +1,7 @@
 package macros
 
-import com.google.appengine.api.datastore.Query.Filter
-import com.google.appengine.api.datastore
-import com.google.appengine.api.datastore.{Query => GQuery, DatastoreServiceFactory}
-import util.{EntityBacker, Query, Datastore}
+import com.google.appengine.api.datastore.{Query => GQuery}
+import util.{EntityBacker, Datastore}
 import com.google.appengine.api.datastore.FetchOptions.Builder._
 
 /**
@@ -12,20 +10,20 @@ import com.google.appengine.api.datastore.FetchOptions.Builder._
  */
 class QuerySpec extends GAESpecTemplate {
 
-  implicit val ds = DatastoreServiceFactory.getDatastoreService()
+  val ds = Datastore.getDatastoreService()
 
   def addTests = {
     0 until 10 foreach { i =>
       val test = Test(i, "test " + i)
-      Datastore.put(test)
+      ds.put(test)
     }
   }
 
   case class Test(in: Int, in2: String)
 
   "Query" should "work" in {
-    val query = Query[Test]
-    query.filter{ bryce => bryce.in2 > "sweet"
+    val query = ds.query[Test]
+        .filter{ bryce => bryce.in2 > "sweet"
     }
 
     query.filter{ bryce =>
@@ -36,7 +34,7 @@ class QuerySpec extends GAESpecTemplate {
   }
 
   it should "deal with non constants" in {
-    val query = Query[Test]
+    val query = ds.query[Test]
     val test = Test(1, "two")
     query.filter{ bryce =>  bryce.in < test.in }
 
@@ -44,7 +42,7 @@ class QuerySpec extends GAESpecTemplate {
   }
 
   it should "do filtering correctly" in {
-    val query = Query[Test]
+    val query = ds.query[Test]
         .filter(_.in < 0)
 
     val test = Test(1, "two")
@@ -57,9 +55,9 @@ class QuerySpec extends GAESpecTemplate {
 
     addTests
 
-    ds.prepare(new GQuery("macros.QuerySpec.Test")).countEntities(withLimit(100)) should equal (10)
+    ds.ds.prepare(new GQuery("macros.QuerySpec.Test")).countEntities(withLimit(100)) should equal (10)
 
-    val results = Query[Test]
+    val results = ds.query[Test]
       .filter(_.in > 0)
       .sortAscBy(_.in)
       .sortDecBy(_.in2)
@@ -72,13 +70,13 @@ class QuerySpec extends GAESpecTemplate {
 
     addTests
 
-    val results = Query[Test]
+    val results = ds.query[Test]
       .limit(3)
       .getIterator.toList
 
     results.length should equal (3)
 
-    val results2: util.QueryIterator[Test with EntityBacker] = Query[Test]
+    val results2: util.QueryIterator[Test with EntityBacker] = ds.query[Test]
       .limit(3)
       .getIterator
 
