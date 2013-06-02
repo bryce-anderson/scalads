@@ -102,9 +102,7 @@ private[writers] class ObjectWriter(val entity: Entity, val parent: DSWriter, pr
     }
 
     override def handleVal(value: Any): DSWriter = {
-      // TODO: Checks if the property needs updating. Performance penalty?
-      if (!(value == null || value.equals(self.entity.getProperty(prefix))))
-        self.entity.setProperty(prefix, value)
+      self.entity.setProperty(prefix, value)
       self
     }
   }

@@ -14,7 +14,11 @@ object Datastore {
 
   def test {
     val a = com.google.appengine.api.datastore.DatastoreServiceFactory.getAsyncDatastoreService
+    //a.beginTransaction().
+  }
 
+  def withTransaction(f: => Any) = {
+    ???
   }
 
   def put(obj: EntityBacker)(implicit ds: DatastoreService) = {
@@ -22,8 +26,10 @@ object Datastore {
     ds.put(obj.ds_backingEntity)
   }
 
-  def put(objs: Iterable[EntityBacker])(implicit ds: DatastoreService) =
+  def put(objs: Iterable[EntityBacker])(implicit ds: DatastoreService) = {
+
     ds.put(objs.map{e => e.ds_updateEntity; e.ds_backingEntity}.asJava)
+  }
 
   def put[U](obj: U)(implicit ds: DatastoreService): Key = macro putImpl[U]
 
