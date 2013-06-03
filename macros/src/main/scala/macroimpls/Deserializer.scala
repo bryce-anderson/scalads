@@ -19,7 +19,7 @@ object Deserializer {
   def deserializeImpl[U: c.WeakTypeTag](c: Context)(reader: c.Expr[GAEObjectReader]): c.Expr[U with EntityBacker[U]] = {
 
     val helpers = new MacroHelpers[c.type](c)
-    import helpers.{isPrimitive, LIT, typeArgumentTree, macroError, buildObjParamExtract}
+    import helpers.{isPrimitive, typeArgumentTree, macroError, buildObjParamExtract}
     import c.universe._
 
     def rparseDate(field: c.Expr[String], reader: c.Expr[GAEObjectReader])  = reify {
@@ -159,7 +159,7 @@ object Deserializer {
           case (pSym, index) =>
             // Change out the types if it has type parameters
             val pTpe = pSym.typeSignature.substituteTypes(sym.asClass.typeParams, tpeArgs)
-            val fieldName = LIT(pSym.name.decoded)
+            val fieldName = c.literal(pSym.name.decoded)
 
             // If param has defaults, try to find the val in map, or call
             // default evaluation from its companion object

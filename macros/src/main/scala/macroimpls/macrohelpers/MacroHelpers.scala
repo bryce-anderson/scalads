@@ -9,8 +9,6 @@ class MacroHelpers[CTPE <: Context](val c: CTPE) {
   import c.universe._
 
   def macroError(msg: String) = { c.error(c.enclosingPosition, msg); throw new Exception }
-  
-  def LIT[B](x: B) = c.Expr[B](Literal(Constant(x)))
 
   // For building objects that take type parameters
   def typeArgumentTree(t: c.Type): c.Tree = t match {

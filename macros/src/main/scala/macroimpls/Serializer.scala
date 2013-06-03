@@ -48,7 +48,7 @@ object Serializer {
   def serializeImpl[U: c.WeakTypeTag](c: Context)(obj: c.Expr[U], writer: c.Expr[Writer[_]]): c.Expr[Unit] = {
     val helpers = new MacroHelpers[c.type](c)
 
-    import helpers.{isPrimitive, LIT, macroError, classNameExpr}
+    import helpers.{isPrimitive, macroError, classNameExpr}
     import c.universe._
 
     val primitiveTypes =
@@ -104,7 +104,7 @@ object Serializer {
           val tpe = pSym.typeSignature.substituteTypes(sym.asClass.typeParams, tpeArgs)
           val fieldName = pSym.name.decoded.trim
           val fieldPath = Select(path, newTermName(fieldName))
-          val startFieldExpr =  reify{writer.splice.startField(LIT(fieldName).splice)}
+          val startFieldExpr =  reify{writer.splice.startField(c.literal(fieldName).splice)}
           startFieldExpr.tree::buildTpe(tpe, fieldPath)::Nil
         } else Nil
       }}

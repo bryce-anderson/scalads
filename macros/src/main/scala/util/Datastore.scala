@@ -29,11 +29,9 @@ class Datastore(val ds: DatastoreService) {
   def update[U](it: QueryIterator[U with EntityBacker[U]])(f: U => Option[U]) {
     val newEntities = new ListBuffer[Entity]
     it.foreach { i =>
-      f(i) match {
-        case Some(r) if r != i =>
+      f(i).foreach{ r =>
           i.ds_serialize(r, i.ds_backingEntity)
           newEntities += i.ds_backingEntity
-        case None =>
       }
     }
     put(newEntities.toList: Iterable[Entity])

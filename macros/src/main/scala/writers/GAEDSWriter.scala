@@ -10,11 +10,6 @@ import language.experimental.macros
  *         Created on 5/27/13
  */
 
-object GAEDSWriter {
-  def apply[U]: GAEDSWriter = macro macroimpls.macrohelpers.UtilMacros.GAEDSWriterImplBare[U]
-  def apply[U](parent: Key): GAEDSWriter = macro macroimpls.macrohelpers.UtilMacros.GAEDSWriterImplKey[U]
-  def apply[U](parent: Entity): GAEDSWriter = macro macroimpls.macrohelpers.UtilMacros.GAEDSWriterImplEntity[U]
-}
 
 class GAEDSWriter(entity: Entity) extends Writer[Entity] {
 

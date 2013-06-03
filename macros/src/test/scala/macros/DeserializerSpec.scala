@@ -1,6 +1,6 @@
 package macros
 
-import com.google.appengine.api.datastore.DatastoreServiceFactory
+import com.google.appengine.api.datastore.{Entity, DatastoreServiceFactory}
 import writers.GAEDSWriter
 import macro_readers.GAEObjectReader
 
@@ -20,7 +20,7 @@ class DeserializerSpec extends GAESpecTemplate {
   val three = Three(myCompound)
 
   "Deserializer" should "extract a simple entity" in {
-    val writer = GAEDSWriter[Simple]
+    val writer = new GAEDSWriter(new Entity("macros.DeserializerSpec.Simple"))
     macroimpls.Serializer.serialize(mySimple, writer)
     val entity = writer.result
 
@@ -32,7 +32,7 @@ class DeserializerSpec extends GAESpecTemplate {
   }
 
   it should "Work with compound objects" in {
-    val writer = GAEDSWriter[Compound]
+    val writer = new GAEDSWriter(new Entity("macros.DeserializerSpec.Compound"))
     macroimpls.Serializer.serialize(myCompound, writer)
     val entity = writer.result
 
@@ -45,7 +45,7 @@ class DeserializerSpec extends GAESpecTemplate {
   }
 
   it should "work with three fold deap objects" in {
-    val writer = GAEDSWriter[Three]
+    val writer = new GAEDSWriter(new Entity("macros.DeserializerSpec.Three"))
     macroimpls.Serializer.serialize(three, writer)
     val entity = writer.result
 
@@ -60,7 +60,7 @@ class DeserializerSpec extends GAESpecTemplate {
 
     case class Test[A](in: A)
     val three = Test(1)
-    val writer = GAEDSWriter[Test[Int]]
+    val writer = new GAEDSWriter(new Entity("macros.DeserializerSpec.Test[Int]"))
     macroimpls.Serializer.serialize(three, writer)
     val entity = writer.result
 
@@ -72,7 +72,7 @@ class DeserializerSpec extends GAESpecTemplate {
   }
 
   it should "generate similar classes" in {
-    val writer = GAEDSWriter[Simple]
+    val writer = new GAEDSWriter(new Entity("macros.DeserializerSpec.Simple"))
     macroimpls.Serializer.serialize(mySimple, writer)
     val entity = writer.result
 

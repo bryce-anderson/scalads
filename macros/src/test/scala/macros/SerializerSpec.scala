@@ -17,7 +17,7 @@ class SerializerSpec extends GAESpecTemplate {
   "DSWriter" should  "Write a simple entity" in {
 
     val a = Simple(0, "one")
-    val writer = GAEDSWriter[Simple]
+    val writer = new GAEDSWriter(new Entity("macros.SerializerSpec.Simple"))
     macroimpls.Serializer.serialize(a, writer)
     val ds = DatastoreServiceFactory.getDatastoreService()
     ds.put(writer.result)
@@ -29,7 +29,7 @@ class SerializerSpec extends GAESpecTemplate {
 
     val a = Compound("Compound", Simple(0, "one"), "the end")
 
-    val writer = GAEDSWriter[Compound]
+    val writer = new GAEDSWriter(new Entity("macros.SerializerSpec.Compound"))
     macroimpls.Serializer.serialize(a, writer)
     val entity = writer.result
 
