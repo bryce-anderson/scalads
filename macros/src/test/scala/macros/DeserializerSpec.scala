@@ -44,7 +44,7 @@ class DeserializerSpec extends GAESpecTemplate {
     compound should equal (myCompound)
   }
 
-  it should "Work with three fold deap objects" in {
+  it should "work with three fold deap objects" in {
     val writer = GAEDSWriter[Three]
     macroimpls.Serializer.serialize(three, writer)
     val entity = writer.result
@@ -52,6 +52,21 @@ class DeserializerSpec extends GAESpecTemplate {
     val reader = GAEObjectReader(entity)
 
     val out = deserialize[Three](reader)
+
+    out should equal (three)
+  }
+
+  it should "handle objects with type args" in {
+
+    case class Test[A](in: A)
+    val three = Test(1)
+    val writer = GAEDSWriter[Test[Int]]
+    macroimpls.Serializer.serialize(three, writer)
+    val entity = writer.result
+
+    val reader = GAEObjectReader(entity)
+
+    val out = deserialize[Test[Int]](reader)
 
     out should equal (three)
   }

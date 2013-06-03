@@ -95,7 +95,10 @@ object Serializer {
     def complexObject(oldTpe: Type, path: Tree): c.Tree = {
       val TypeRef(_, sym: Symbol, tpeArgs: List[Type]) = oldTpe
 
-      // Completely flatten this list of constructors, accessing doesnt need the multiple applies
+      if (oldTpe.member(nme.CONSTRUCTOR)
+        .asTerm.alternatives.length > 1)
+        c.error(c.enclosingPosition, s"Class ${oldTpe} has multiple constructors. Cannot generate serializer.")
+      // Completely flatten this list of constructors, accessing doesn't need the multiple applies
       val ctorTrees = oldTpe.member(nme.CONSTRUCTOR).asMethod.paramss.flatMap{ _.flatMap{ pSym =>
         if (pSym.isPublic) {
           val tpe = pSym.typeSignature.substituteTypes(sym.asClass.typeParams, tpeArgs)

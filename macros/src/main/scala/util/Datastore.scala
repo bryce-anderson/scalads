@@ -1,12 +1,14 @@
 package util
 
-import com.google.appengine.api.datastore.{Key, Entity, DatastoreService, DatastoreServiceFactory}
+import com.google.appengine.api.datastore._
 import collection.JavaConverters._
 
 import language.experimental.macros
 import scala.reflect.macros.Context
-import macroimpls.QueryMacros
+import macroimpls.Deserializer
 import scala.collection.mutable.ListBuffer
+import macroimpls.macrohelpers.MacroHelpers
+import macro_readers.GAEObjectReader
 
 /**
  * @author Bryce Anderson
@@ -58,8 +60,21 @@ class Datastore(val ds: DatastoreService) {
 object Datastore {
   def getDatastoreService() = new Datastore(DatastoreServiceFactory.getDatastoreService)
 
-  def queryImpl[U: c.WeakTypeTag](c: Context { type PrefixType = Datastore }): c.Expr[Query[U]] =
-    QueryMacros.ObjApplyImpl[U](c)(c.universe.reify(c.prefix.splice.ds))
+  def queryImpl[U: c.WeakTypeTag](c: Context { type PrefixType = Datastore }): c.Expr[Query[U]] = {
+    val helpers = new MacroHelpers[c.type](c)
+
+    import com.google.appengine.api.datastore.{Query => GQuery}
+    import c.universe._
+
+    val nameExpr = helpers.classNameExpr(weakTypeOf[U])
+    val deserializeExpr = Deserializer.deserializeImpl[U](c)(c.Expr[GAEObjectReader](Ident(newTermName("reader"))))
+    reify (
+      new Query[U](c.prefix.splice, new GQuery(nameExpr.splice),{ entity: Entity =>
+        val reader = GAEObjectReader(entity)
+        deserializeExpr.splice
+      })
+    )
+  }
 
   def putImplBacked[U: c.WeakTypeTag](c: Context {type PrefixType = Datastore})(obj: c.Expr[U], parent: c.Expr[EntityBacker[_]]): c.Expr[Key] =
     putImpl[U](c)(obj, c.universe.reify(parent.splice.ds_key))

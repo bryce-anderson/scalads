@@ -81,7 +81,7 @@ object Deserializer {
           TypeTree(typeOf[GAEObjectReader]),
           reader.tree
         )
-        Block(orTree, buildMap(tpe, orExpr))
+        Block(orTree::Nil, buildMap(tpe, orExpr))
       }
       else if (typeOf[List[_]] <:< tpe.erasure) {
         macroError("Entities cannot contain lists")
@@ -150,40 +150,12 @@ object Deserializer {
         reader.tree
       )
 
-      // Builds the if/else tree for checking constructor params and returning a new object
-      def pickConstructorTree(argNames: c.Expr[Set[String]]): Tree = {
-        // Makes expressions for determining of they list is satisfied by the reader
-        def ctorCheckingExpr(ctors: List[List[Symbol]]): c.Expr[Boolean] = {
-          def isRequired(item: Symbol) = {
-            val sym = item.asTerm
-            !(sym.isParamWithDefault || sym.typeSignature <:< typeOf[Option[_]])
-          }
+      def buildObject(): Tree = {
+        val ctor = tpe.member(nme.CONSTRUCTOR).asMethod
+        if (ctor.alternatives.length > 1)
+          c.error(c.enclosingPosition, s"Object of type ${tpe} has multiple constructors and cannot be deserialized")
 
-          val expr = c.Expr[Set[String]](Apply(Select(Ident("Set"), newTermName("apply")),
-            ctors.flatten
-              .filter(isRequired(_))
-              .map(sym => Literal(Constant(sym.name.decoded)))
-          ))
-
-          reify(expr.splice.subsetOf(argNames.splice))
-        }
-
-        def ifElseTreeBuilder(ctorSets: List[(c.Expr[Boolean], List[List[Symbol]])]): Tree = ctorSets match {
-          case h::Nil => buildObjFromParams(h._2)
-          case h::t => If(h._1.tree, buildObjFromParams(h._2), ifElseTreeBuilder(t))
-        }
-
-        val ctors: List[MethodSymbol] = tpe.member(nme.CONSTRUCTOR)
-          .asTerm.alternatives   // List of constructors
-          .map(_.asMethod)       // method symbols
-          .sortBy(-_.paramss.flatten.size)
-        val ifExprsAndParams = ctors.map(ctor => ctorCheckingExpr(ctor.paramss)).zip(ctors.map(_.asMethod.paramss))
-
-        ifElseTreeBuilder(ifExprsAndParams)
-      }
-
-      def buildObjFromParams(ctorParams: List[List[Symbol]]): Tree =
-        ctorParams.map(_.zipWithIndex.map {
+        ctor.paramss.map(_.zipWithIndex.map {
           case (pSym, index) =>
             // Change out the types if it has type parameters
             val pTpe = pSym.typeSignature.substituteTypes(sym.asClass.typeParams, tpeArgs)
@@ -213,11 +185,12 @@ object Deserializer {
               }.tree
             } else buildField(pTpe, fieldName, orExpr)
           }).foldLeft[Tree](Select(New(newObjTypeTree), nme.CONSTRUCTOR)){(a ,b) => Apply(a, b) }
+      }
 
 
       val newObjTerm = newTermName(c.fresh("newObj$"))
       val newObjTree = ValDef(Modifiers(), newObjTerm, newObjTypeTree,
-        pickConstructorTree(reify(orExpr.splice.getKeys))
+        buildObject()
       )
 
       Block(orTree::newObjTree::Nil, Ident(newObjTerm))
@@ -226,7 +199,7 @@ object Deserializer {
     val tpe = weakTypeOf[U]
 
     def extendWithEntityBacker(tree: Tree): c.Expr[U with EntityBacker[U]] = {
-      val TypeRef(_, tpeSym, params) = tpe  // TODO: add type args
+      val appliedTpeTree = helpers.typeArgumentTree(tpe)
       val TypeRef(_, backerSym, _) = typeOf[EntityBacker[Any]]
       val (ctorTree: List[List[Tree]], readerTree) = buildObjParamExtract(tree)
 
@@ -234,11 +207,11 @@ object Deserializer {
         c.Expr[U](Ident(newTermName("obj"))), c.Expr[Entity](Ident(newTermName("entity")))
       ).tree
 
+      // Builds the augmentation methods
       val newTree = Block(List(
         readerTree: Tree,
-        ClassDef(Modifiers(Flag.FINAL), newTypeName("$anon"), List(), Template(List(Ident(tpeSym), AppliedTypeTree(Ident(backerSym), List(Ident(tpeSym)))),
+        ClassDef(Modifiers(Flag.FINAL), newTypeName("$anon"), List(), Template(List(appliedTpeTree, AppliedTypeTree(Ident(backerSym), List(appliedTpeTree))),
           ValDef(Modifiers(Flag.PRIVATE), newTermName("self"), TypeTree(), EmptyTree) , List(
-            ValDef(Modifiers(), newTermName("ds_backingEntity"), TypeTree(typeOf[Entity]), reify(reader.splice.entity).tree): Tree,
             DefDef(Modifiers(), nme.CONSTRUCTOR, Nil, Nil::Nil, TypeTree(),
               Block(
                 ctorTree.foldLeft[Tree](Select(Super(This(tpnme.EMPTY), tpnme.EMPTY), nme.CONSTRUCTOR))
@@ -246,6 +219,7 @@ object Deserializer {
                 Literal(Constant(()))
               )
             ),
+            ValDef(Modifiers(), newTermName("ds_backingEntity"), TypeTree(typeOf[Entity]), reify(reader.splice.entity).tree): Tree,
             DefDef(Modifiers(), newTermName("ds_serialize"), Nil, List(
               ValDef(Modifiers(Flag.PARAM), newTermName("obj"), typeArgumentTree(tpe), EmptyTree)::
               ValDef(Modifiers(Flag.PARAM), newTermName("entity"), TypeTree(typeOf[Entity]), EmptyTree)::Nil

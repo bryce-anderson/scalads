@@ -2,10 +2,10 @@ package macroimpls
 
 import language.experimental.macros
 import scala.reflect.macros.Context
-import util.{EntityBacker, Query, QueryIterator}
+import util.{Datastore, Query}
 
 import com.google.appengine.api.datastore.Query._
-import com.google.appengine.api.datastore.{Query => GQuery, DatastoreService}
+import com.google.appengine.api.datastore.{Query => GQuery, Entity, DatastoreService}
 import macro_readers.GAEObjectReader
 import macroimpls.macrohelpers.MacroHelpers
 
@@ -17,12 +17,6 @@ import macroimpls.macrohelpers.MacroHelpers
 
 
 object QueryMacros {
-
-  def ObjApplyImpl[U: c.WeakTypeTag](c: Context)(datastore: c.Expr[DatastoreService]): c.Expr[Query[U]] = {
-    val helpers = new MacroHelpers[c.type](c)
-    val nameExpr = helpers.classNameExpr(c.universe.weakTypeOf[U])
-    c.universe.reify (new Query[U](datastore.splice, new GQuery(nameExpr.splice)))
-  }
 
   def findName(c: Context)(tree: c.Tree, name: c.Name): String = {
     import c.universe._
@@ -57,22 +51,6 @@ object QueryMacros {
     import c.universe._
     sortImplGeneric(c)(f, reify(SortDirection.DESCENDING))
   }
-
-  def getIteratorImpl[U: c.WeakTypeTag](c: Context { type PrefixType = Query[U]}): c.Expr[QueryIterator[U with EntityBacker[U]]] = {
-    import c.universe._
-
-    val deserializeExpr = Deserializer.deserializeImpl[U](c)(c.Expr[GAEObjectReader](Ident(newTermName("reader"))))
-
-    val result = reify {
-      new QueryIterator[U with EntityBacker[U]](c.prefix.splice.runQuery, {
-        entity =>
-          val reader = GAEObjectReader(entity)
-          deserializeExpr.splice
-      })
-    }
-    result
-  }
-
 
   def filterImpl[U: c.WeakTypeTag](c: Context {type PrefixType = Query[U]})(f: c.Expr[U => Boolean]): c.Expr[Query[U]] = {
     import c.universe._
