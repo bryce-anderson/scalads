@@ -2,7 +2,7 @@ package writers
 
 import java.util.Date
 import com.google.appengine.api.datastore.Entity
-import com.google.appengine.api.datastore.Key
+import com.google.appengine.api.datastore.{Key, Text}
 import language.experimental.macros
 
 /**
@@ -97,7 +97,10 @@ private[writers] class ObjectWriter(val entity: Entity, val parent: DSWriter, pr
     }
 
     override def handleVal(value: Any): DSWriter = {
-      self.entity.setProperty(prefix, value)
+      value match {
+        case s: String => self.entity.setProperty(prefix, if(s.length > 500) new Text(s) else s)
+        case value => self.entity.setProperty(prefix, value)
+      }
       self
     }
   }

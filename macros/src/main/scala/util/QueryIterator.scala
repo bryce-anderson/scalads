@@ -9,8 +9,8 @@ import scala.collection.JavaConverters._
  *         Created on 6/1/13
  */
 
-class QueryIterator[+U]
-    (it: QueryResultIterator[Entity], val deserializer: Entity => U) extends Iterator[U] {
+class QueryIterator[+A]
+    (it: QueryResultIterator[Entity], val deserializer: Entity => A) extends Iterator[A] {
 
   def getCursor(): String = it.getCursor.toWebSafeString
 
@@ -18,7 +18,16 @@ class QueryIterator[+U]
 
   def indexList: List[Index] = it.getIndexList.asScala.toList
 
+  def nextEntity(): Entity = it.next()
+
+  def nextWithEntity(): (Entity, A) = {
+    val entity = nextEntity()
+    (entity, deserializer(entity))
+  }
+
+  override def map[B](f: A => B) = new QueryIterator[B](it, e => f(deserializer(e)))
+
   override def hasNext(): Boolean = it.hasNext
 
-  override def next(): U = deserializer(it.next())
+  override def next(): A = deserializer(nextEntity())
 }

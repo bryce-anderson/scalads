@@ -1,7 +1,7 @@
 package macro_readers
 
 import java.util.Date
-import com.google.appengine.api.datastore.Entity
+import com.google.appengine.api.datastore.{Entity, Text}
 
 import scala.collection.JavaConverters._
 
@@ -64,6 +64,7 @@ class GAEObjectReader(val entity: Entity, prefix: String) extends ObjectReader {
 
   def optString(key: String): Option[String] =  Option(entity.getProperty(fullPrefix + key)).flatMap (_ match {
     case i: String => Some(i)
+    case s: Text =>   Some(s.getValue)
     case _ => None
   })
 

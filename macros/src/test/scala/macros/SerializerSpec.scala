@@ -4,6 +4,8 @@ import writers.GAEDSWriter
 import com.google.appengine.api.datastore.FetchOptions.Builder.withLimit
 import com.google.appengine.api.datastore.{Entity, Key, Query, DatastoreServiceFactory}
 
+import util.Datastore
+
 
 /**
  * @author Bryce Anderson
@@ -22,6 +24,18 @@ class SerializerSpec extends GAESpecTemplate {
     val ds = DatastoreServiceFactory.getDatastoreService()
     ds.put(writer.result)
     ds.prepare(new Query("macros.SerializerSpec.Simple")).countEntities(withLimit(10)) should equal (1)
+  }
+
+  it should "Store longer strings" in {
+    case class SuperString(str: String)
+
+    val a = SuperString("hello"*500)
+    val ds = Datastore.getDatastoreService()
+
+    ds.put(a)
+
+    ds.query[SuperString]
+      .getIterator.next() should equal(a)
   }
 
   it should "Store a compound object" in {
