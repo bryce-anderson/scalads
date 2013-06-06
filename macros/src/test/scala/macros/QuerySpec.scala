@@ -3,6 +3,7 @@ package macros
 import com.google.appengine.api.datastore.{Query => GQuery}
 import util.{EntityBacker, Datastore}
 import com.google.appengine.api.datastore.FetchOptions.Builder._
+import java.util.Date
 
 /**
  * @author Bryce Anderson
@@ -20,6 +21,7 @@ class QuerySpec extends GAESpecTemplate {
   }
 
   case class Test(in: Int, in2: String)
+  case class Types(in1: Int, in2: Long, in3: Float, in4: Double, in5: String, in6: Date)
 
   "Query" should "work" in {
     val query = ds.query[Test]
@@ -67,7 +69,6 @@ class QuerySpec extends GAESpecTemplate {
   }
 
   it should "work with FetchOptions" in {
-
     addTests
 
     val results = ds.query[Test]
@@ -82,5 +83,33 @@ class QuerySpec extends GAESpecTemplate {
 
     results2.length should equal (3)
   }
+
+  it should "do projections properly" in {
+    addTests
+
+    val results = ds.query[Test]
+          .limit(3)
+          .project{ i => (i.in, i.in2) }
+
+    print(results)
+  }
+
+  it should "project types properly" in {
+    val date = new Date()
+    val types = Types(1, 2, 3.0f, 4, "five",date)
+    ds.put(types )
+
+    val result = ds.query[Types]
+      .project( i => (i.in1, i.in2, i.in3, i.in4, i.in5, i.in6, i.in5, "cats"))
+
+    val opt = result.next()
+    opt._1 should equal(types.in1)
+    opt._2 should equal(types.in2)
+    opt._3 should equal(types.in3)
+    opt._4 should equal(types.in4)
+    opt._5 should equal(types.in5)
+    opt._6 should equal(types.in6)
+    opt._7 should equal(types.in5)
+    opt._8  should equal("cats")
 
 }

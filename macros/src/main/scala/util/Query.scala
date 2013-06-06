@@ -27,6 +27,10 @@ class Query[U](ds: Datastore, gQuery: GQuery, deserializer: Entity => U with Ent
     override val fetchOptions = self.fetchOptions.startCursor(Cursor.fromWebSafeString(offset))
   }
 
+  def getIterator: QueryIterator[U with EntityBacker[U]] = mapIterator(deserializer)
+
+  def mapIterator[R](f: Entity => R): QueryIterator[R] = new QueryIterator(runQuery, f)
+
   def runQuery = ds.ds.prepare(gQuery).asQueryResultIterator(fetchOptions)
 
   def update(f: U => Option[U]) = ds.update(getIterator)(f)
@@ -39,8 +43,11 @@ class Query[U](ds: Datastore, gQuery: GQuery, deserializer: Entity => U with Ent
 
   def sortBy(field: String, dir: SortDirection) = new Query[U](ds, gQuery.addSort(field, dir), deserializer)
 
-  def getIterator: QueryIterator[U with EntityBacker[U]] =
-    new QueryIterator[U with EntityBacker[U]](runQuery, deserializer)
+  def setProjection(proj: Projection): self.type = { gQuery.addProjection(proj); self }
+
+  // Macro impls
+
+  def project[R](f: U => R): QueryIterator[R] =         macro QueryMacros.project[U, R]
 
   def sortAscBy(f: U => Any): Query[U] =            macro QueryMacros.sortImplAsc[U]
 

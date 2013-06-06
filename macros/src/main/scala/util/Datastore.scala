@@ -16,6 +16,7 @@ import macro_readers.GAEObjectReader
  */
 class Datastore(val ds: DatastoreService) {
 
+
   def withTransaction[U](f: => U): U = {
     val txn = ds.beginTransaction()
     try { val a = f; txn.commit(); a }

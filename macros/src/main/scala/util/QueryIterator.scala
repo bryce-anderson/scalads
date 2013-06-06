@@ -9,7 +9,7 @@ import scala.collection.JavaConverters._
  *         Created on 6/1/13
  */
 
-class QueryIterator[+U <: EntityBacker[_]]
+class QueryIterator[+U]
     (it: QueryResultIterator[Entity], val deserializer: Entity => U) extends Iterator[U] {
 
   def getCursor(): String = it.getCursor.toWebSafeString
