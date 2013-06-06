@@ -83,12 +83,17 @@ object QueryMacros {
       }
     }
 
-    val entityExtractors: List[Tree] = args.map{tree => try {Right(findPath(c)(tree, name).mkString("."))} catch {case m: MatchError => Left(tree)} }
+    def pathReader(reader: c.Expr[GAEObjectReader], stack: List[String]): (c.Expr[GAEObjectReader], String) = stack match {
+      case str::Nil => (reader, str)
+      case h::t =>  val name = c.literal(h); pathReader(reify(reader.splice.getObjectReader(name.splice)), t)
+    }
+
+    val entityExtractors: List[Tree] = args.map{tree => try {Right(findPath(c)(tree, name))} catch {case m: MatchError => Left(tree)} }
       .map{ treeOrName =>
-      val readerExpr = c.Expr[GAEObjectReader](Ident(newTermName("reader")))
-      treeOrName.fold( identity, { name =>
-        val nameExpr = c.literal(name)
-        fieldTypes(name) match {
+      treeOrName.fold( identity, { nameStack =>
+        val (readerExpr, key) = pathReader(c.Expr[GAEObjectReader](Ident(newTermName("reader"))), nameStack)
+        val nameExpr = c.literal(key)
+        fieldTypes(nameStack.mkString(".")) match {
           case tpe if tpe =:= typeOf[Int] || tpe=:= typeOf[java.lang.Integer] => reify{readerExpr.splice.getInt(nameExpr.splice)}.tree
           case tpe if tpe =:= typeOf[Long] || tpe=:= typeOf[java.lang.Long] => reify{readerExpr.splice.getLong(nameExpr.splice)}.tree
           case tpe if tpe =:= typeOf[Float] || tpe=:= typeOf[java.lang.Float] => reify{readerExpr.splice.getFloat(nameExpr.splice)}.tree

@@ -18,7 +18,7 @@ class GAEObjectReader(val entity: Entity, prefix: String) extends ObjectReader {
 
   lazy val getKeys: Set[String] = entity.getProperties.keySet().asScala.toSet
 
-  private val fullPrefix = if(prefix == "") "" else prefix + "."
+  private val fullPrefix = if(prefix.isEmpty) "" else prefix + "."
 
   // Option forms
   def optObjectReader(key: String): Option[GAEObjectReader] =

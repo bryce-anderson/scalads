@@ -21,6 +21,7 @@ class QuerySpec extends GAESpecTemplate {
   }
 
   case class Test(in: Int, in2: String)
+  case class Compound(in: Int, in2: Test)
   case class Types(in1: Int, in2: Long, in3: Float, in4: Double, in5: String, in6: Date)
 
   "Query" should "work" in {
@@ -110,6 +111,19 @@ class QuerySpec extends GAESpecTemplate {
     opt._5 should equal(types.in5)
     opt._6 should equal(types.in6)
     opt._7 should equal(types.in5)
-    opt._8  should equal("cats")
+    opt._8 should  equal("cats")
+  }
 
+  //class Compound(in: Int, in2: Test)
+  it should "project compound objects" in {
+    val comp = Compound(1, Test(1, "one"))
+    ds.put(comp)
+
+    val result = ds.query[Compound]
+      .project( i => (i.in, i.in2.in))
+      .next()
+
+    result._1 should equal(comp.in)
+    result._2 should equal(comp.in2.in)
+  }
 }
