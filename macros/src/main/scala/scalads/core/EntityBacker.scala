@@ -1,4 +1,4 @@
-package util
+package scalads.core
 
 /**
  * @author Bryce Anderson

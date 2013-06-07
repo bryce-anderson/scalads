@@ -1,14 +1,18 @@
-package util
-
-import com.google.appengine.api.datastore._
-import collection.JavaConverters._
+package scalads
 
 import language.experimental.macros
 import scala.reflect.macros.Context
-import macroimpls.Deserializer
+
+import com.google.appengine.api.datastore.{DatastoreService, DatastoreServiceFactory, Entity, Key}
+import collection.JavaConverters._
+
 import scala.collection.mutable.ListBuffer
-import macroimpls.macrohelpers.MacroHelpers
 import macro_readers.GAEObjectReader
+import _root_.macroimpls.{Serializer, Deserializer}
+import _root_.macroimpls.macrohelpers.MacroHelpers
+
+
+import scalads.core.{QueryIterator, EntityBacker, Query}
 
 /**
  * @author Bryce Anderson
@@ -84,7 +88,7 @@ object Datastore {
   def putImpl[U: c.WeakTypeTag](c: Context {type PrefixType = Datastore})(obj: c.Expr[U], parent: c.Expr[Key]): c.Expr[Key] = {
     import c.universe._
 
-    val serializeExpr = macroimpls.Serializer.serializeObject[U](c)(obj, parent)
+    val serializeExpr = Serializer.serializeObject[U](c)(obj, parent)
 
     reify{
       val e: Entity = serializeExpr.splice

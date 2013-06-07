@@ -1,7 +1,7 @@
 package macros
 
-import util.Datastore
 import com.google.appengine.api.datastore.Entity
+import scalads.Datastore
 
 /**
  * @author Bryce Anderson

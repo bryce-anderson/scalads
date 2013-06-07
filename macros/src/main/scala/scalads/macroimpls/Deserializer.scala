@@ -6,8 +6,8 @@ import macroimpls.macrohelpers.MacroHelpers
 import macro_readers.GAEObjectReader
 import java.text.SimpleDateFormat
 import exceptions.MappingException
-import util.EntityBacker
 import com.google.appengine.api.datastore.Entity
+import scalads.core.EntityBacker
 
 
 object Deserializer {

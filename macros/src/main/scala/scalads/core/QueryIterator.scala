@@ -1,4 +1,4 @@
-package util
+package scalads.core
 
 import com.google.appengine.api.datastore.{Entity, QueryResultIterator, Index}
 

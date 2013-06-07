@@ -2,13 +2,13 @@ package macroimpls
 
 import language.experimental.macros
 import scala.reflect.macros.Context
-import util.{QueryIterator, Datastore, Query}
 import scala.util.control.Exception.catching
 
 import com.google.appengine.api.datastore.Query._
 import com.google.appengine.api.datastore.{Query => GQuery, PropertyProjection, Projection, Entity, DatastoreService}
 import macro_readers.GAEObjectReader
 import macroimpls.macrohelpers.MacroHelpers
+import scalads.core.{QueryIterator, Query}
 
 /**
  * @author Bryce Anderson

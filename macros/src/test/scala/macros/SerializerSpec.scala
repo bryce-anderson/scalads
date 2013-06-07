@@ -4,7 +4,7 @@ import writers.GAEDSWriter
 import com.google.appengine.api.datastore.FetchOptions.Builder.withLimit
 import com.google.appengine.api.datastore.{Entity, Key, Query, DatastoreServiceFactory}
 
-import util.Datastore
+import scalads.Datastore
 
 
 /**

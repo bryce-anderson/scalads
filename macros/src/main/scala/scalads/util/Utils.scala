@@ -1,4 +1,4 @@
-package util
+package scalads.util
 
 /**
  * @author Bryce Anderson
@@ -6,6 +6,7 @@ package util
  */
 object Utils {
 
+  // Traditional identity doesn't work because the type T is difficult to define in macros
   final def optIdent[T](in: Option[T]) = in
 
 }

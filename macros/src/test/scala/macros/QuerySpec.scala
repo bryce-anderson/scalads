@@ -1,9 +1,10 @@
 package macros
 
 import com.google.appengine.api.datastore.{Query => GQuery}
-import util.{EntityBacker, Datastore}
 import com.google.appengine.api.datastore.FetchOptions.Builder._
 import java.util.Date
+import scalads.Datastore
+import scalads.core.{QueryIterator, EntityBacker}
 
 /**
  * @author Bryce Anderson
@@ -78,7 +79,7 @@ class QuerySpec extends GAESpecTemplate {
 
     results.length should equal (3)
 
-    val results2: util.QueryIterator[Test with EntityBacker[Test]] = ds.query[Test]
+    val results2: QueryIterator[Test with EntityBacker[Test]] = ds.query[Test]
       .limit(3)
       .getIterator
 

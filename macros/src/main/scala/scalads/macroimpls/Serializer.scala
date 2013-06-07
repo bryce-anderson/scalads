@@ -3,13 +3,14 @@ package macroimpls
 import language.experimental.macros
 import scala.reflect.macros.Context
 import java.util.Date
-import util.Utils._
+import scalads.util.{Utils}
+import Utils._
 
 import macrohelpers.MacroHelpers
 
 import writers.{GAEDSWriter, Writer}
 import com.google.appengine.api.datastore.{Key, Entity}
-import util.EntityBacker
+import scalads.core.EntityBacker
 
 
 // Intended to be the serialization side of the class builder

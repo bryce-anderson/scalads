@@ -1,10 +1,11 @@
-package util
+package scalads.core
 
 import language.experimental.macros
 
 import com.google.appengine.api.datastore.{Query => GQuery, _}
 import com.google.appengine.api.datastore.Query.{SortDirection, Filter}
 import macroimpls.QueryMacros
+import scalads.Datastore
 
 /**
  * @author Bryce Anderson
