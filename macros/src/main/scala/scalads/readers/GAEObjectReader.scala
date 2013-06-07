@@ -1,7 +1,7 @@
 package scalads.readers
 
 import java.util.Date
-import com.google.appengine.api.datastore.{Entity, Text}
+import com.google.appengine.api.datastore.{Entity, Text, ShortBlob, Blob}
 
 import scala.collection.JavaConverters._
 
@@ -71,5 +71,10 @@ class GAEObjectReader(val entity: Entity, prefix: String) extends ObjectReader {
   def optDate(key: String): Option[Date] =  Option(entity.getProperty(fullPrefix + key)).flatMap (_ match {
     case i: Date => Some(i)
     case _ => None
+  })
+
+  def optBytes(key: String): Option[Array[Byte]] = Option(entity.getProperty(fullPrefix + key)).flatMap(_ match {
+    case i: ShortBlob => Some(i.getBytes)
+    case i: Blob      => Some(i.getBytes)
   })
 }

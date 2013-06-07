@@ -111,7 +111,7 @@ object QueryMacros {
     val applyExpr = c.Expr[R](Block(readerTree::Nil, Apply(ctorTree, entityExtractors)))
 
     val result = reify(qExpr.splice.mapIterator{entity => applyExpr.splice })
-    println(result)
+    //println(result)
     result
   }
 

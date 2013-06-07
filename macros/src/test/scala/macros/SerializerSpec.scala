@@ -1,6 +1,6 @@
 package macros
 
-import scalads.writers.GAEDSWriter
+import scalads.writers.GAEWriter
 import scalads.macroimpls
 import com.google.appengine.api.datastore.FetchOptions.Builder.withLimit
 import com.google.appengine.api.datastore.{Entity, Key, Query, DatastoreServiceFactory}
@@ -20,7 +20,7 @@ class SerializerSpec extends GAESpecTemplate {
   "DSWriter" should  "Write a simple entity" in {
 
     val a = Simple(0, "one")
-    val writer = new GAEDSWriter(new Entity("macros.SerializerSpec.Simple"))
+    val writer = new GAEWriter(new Entity("macros.SerializerSpec.Simple"))
     macroimpls.Serializer.serialize(a, writer)
     val ds = DatastoreServiceFactory.getDatastoreService()
     ds.put(writer.result)
@@ -44,7 +44,7 @@ class SerializerSpec extends GAESpecTemplate {
 
     val a = Compound("Compound", Simple(0, "one"), "the end")
 
-    val writer = new GAEDSWriter(new Entity("macros.SerializerSpec.Compound"))
+    val writer = new GAEWriter(new Entity("macros.SerializerSpec.Compound"))
     macroimpls.Serializer.serialize(a, writer)
     val entity = writer.result
 

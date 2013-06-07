@@ -8,7 +8,7 @@ import Utils._
 
 import macrohelpers.MacroHelpers
 
-import scalads.writers.{GAEDSWriter, Writer}
+import scalads.writers.{GAEWriter, Writer}
 
 import scalads.{Entity, Key}
 import scalads.core.EntityBacker
@@ -40,8 +40,8 @@ object Serializer {
     import c.universe._
 
    reify{
-     val writer = new GAEDSWriter(entity.splice)
-     serializeImpl(c)(obj, c.Expr[GAEDSWriter](Ident(newTermName("writer")))).splice
+     val writer = new GAEWriter(entity.splice)
+     serializeImpl(c)(obj, c.Expr[GAEWriter](Ident(newTermName("writer")))).splice
    }
   }
 
@@ -60,7 +60,7 @@ object Serializer {
        (typeOf[Double], (t: Tree) => reify{writer.splice.double(c.Expr[Double](t).splice)})::
        (typeOf[Boolean], (t: Tree) => reify{writer.splice.boolean(c.Expr[Boolean](t).splice)})::
        (typeOf[Long], (t: Tree) => reify{writer.splice.long(c.Expr[Long](t).splice)})::
-       (typeOf[Byte], (t: Tree) => reify{writer.splice.byte(c.Expr[Byte](t).splice)})::
+       (typeOf[Array[Byte]], (t: Tree) => reify{writer.splice.bytes(c.Expr[Array[Byte]](t).splice)})::
        (typeOf[BigInt], (t: Tree) => reify{writer.splice.bigInt(c.Expr[BigInt](t).splice)})::
        (typeOf[Short], (t: Tree) => reify{writer.splice.short(c.Expr[Short](t).splice)})::
        (typeOf[BigDecimal], (t: Tree) => reify{writer.splice.bigDecimal(c.Expr[BigDecimal](t).splice)})::

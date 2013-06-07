@@ -31,6 +31,7 @@ trait ObjectReader extends Reader {
   def optBool(key: String): Option[Boolean]
   def optString(key: String): Option[String]
   def optDate(key: String): Option[Date]
+  def optBytes(key: String): Option[Array[Byte]]
 
   // Direct forms with default impl based on the Option form
   def getObjectReader(key: String): ObjectReader =
@@ -55,6 +56,8 @@ trait ObjectReader extends Reader {
     optString(key).getOrElse(failStructure(s"ObjectReader doesn't contain a String in field '$key'"))
   def getDate(key: String): Date =
     optDate(key).getOrElse(failStructure(s"ObjectReader doesn't contain a Date in field '$key'"))
+  def getBytes(key: String): Array[Byte] =
+    optBytes(key).getOrElse(failStructure(s"ObjectReader doesn't contain bytes in field '$key'"))
 }
 
 trait ArrayIterator extends Reader {

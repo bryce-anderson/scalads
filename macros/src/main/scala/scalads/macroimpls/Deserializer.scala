@@ -23,10 +23,6 @@ object Deserializer {
     import helpers.{isPrimitive, typeArgumentTree, macroError, buildObjParamExtract}
     import c.universe._
 
-    def rparseDate(field: c.Expr[String], reader: c.Expr[GAEObjectReader])  = reify {
-      new SimpleDateFormat().parse(rparseString(field, reader).splice)
-    }
-
     def rparseString(field: c.Expr[String], reader: c.Expr[GAEObjectReader]) = reify {
       reader.splice.getString(field.splice)
     }
@@ -35,7 +31,7 @@ object Deserializer {
       Symbol(rparseString(field, reader).splice)
     }
 
-    def rparseOption(tpe:Type, field: c.Expr[String], reader: c.Expr[GAEObjectReader]):Tree = {
+    def  rparseOption(tpe:Type, field: c.Expr[String], reader: c.Expr[GAEObjectReader]):Tree = {
       val TypeRef(_, _, List(argTpe)) = tpe
       reify{
         try{
@@ -49,7 +45,7 @@ object Deserializer {
     def buildMap(tpe:Type, reader: c.Expr[GAEObjectReader]): c.Tree   = {
       val TypeRef(_, _, keyTpe::valTpe::Nil) = tpe
       // Capable of parsing maps that contain primitives as keys, not only strings
-      val kExpr = c.Expr[String](Ident("k"))
+      val kExpr = c.Expr[String](Ident(newTermName("k")))
       val keyParser = keyTpe match {
         case a if a =:= typeOf[Int]     => reify{kExpr.splice.toInt}
         case a if a =:= typeOf[Long]    => reify{kExpr.splice.toLong}
@@ -98,7 +94,9 @@ object Deserializer {
       else if (tpe =:= typeOf[Long])        reify { reader.splice.getLong(field.splice)  }.tree
       else if (tpe =:= typeOf[Float])       reify { reader.splice.getFloat(field.splice) }.tree
       else if (tpe =:= typeOf[Double])      reify { reader.splice.getDouble(field.splice)}.tree
-      else if (tpe =:= typeOf[Boolean])      reify { reader.splice.getBool(field.splice)}.tree
+      else if (tpe =:= typeOf[Boolean])     reify { reader.splice.getBool(field.splice)}.tree
+      else if (tpe =:= typeOf[Array[Byte]]) reify { reader.splice.getBytes(field.splice)}.tree
+      else if (tpe =:= typeOf[Date])        reify { reader.splice.getDate(field.splice) }.tree
       else if (tpe =:= typeOf[String])      { rparseString(field, reader).tree }
       else if (tpe =:= typeOf[Char])        reify {
         val str = rparseString(field, reader).splice
@@ -106,7 +104,6 @@ object Deserializer {
           throw new IllegalStateException(s"String $str is too long to be converted to Char")
         str.charAt(0)
       }.tree
-      else if (tpe =:= typeOf[Date])         { rparseDate(field, reader).tree   }
       else if (tpe =:= typeOf[scala.Symbol]) { rparseSymbol(field, reader).tree }
       else throw new java.lang.NoSuchFieldException(s"Type '$tpe' is not a primitive!")
     }
@@ -114,10 +111,13 @@ object Deserializer {
     def buildPrimitiveOpt(tpe: Type, field: c.Expr[String], reader: c.Expr[GAEObjectReader]): c.Expr[Option[_]] = {
       if      (tpe =:= typeOf[Int])         reify {reader.splice.optInt(field.splice)     }
       else if (tpe =:= typeOf[Short])       reify {reader.splice.optInt(field.splice).map(_.asInstanceOf[Short])}
-      else if (tpe =:= typeOf[Byte])       reify {reader.splice.optInt(field.splice).map(_.asInstanceOf[Byte])}
+      else if (tpe =:= typeOf[Byte])        reify {reader.splice.optInt(field.splice).map(_.asInstanceOf[Byte])}
       else if (tpe =:= typeOf[Long])        reify { reader.splice.optLong(field.splice)   }
       else if (tpe =:= typeOf[Float])       reify { reader.splice.optFloat(field.splice)  }
       else if (tpe =:= typeOf[Double])      reify { reader.splice.optDouble(field.splice) }
+      else if (tpe =:= typeOf[Boolean])     reify { reader.splice.optBool(field.splice)   }
+      else if (tpe =:= typeOf[Array[Byte]]) reify { reader.splice.optBytes(field.splice)  }
+      else if (tpe =:= typeOf[Date])        reify { reader.splice.optDate(field.splice)   }
       else if (tpe =:= typeOf[String])      reify { reader.splice.optString(field.splice) }
       else if (tpe =:= typeOf[Char])      reify { reader.splice.optString(field.splice).map{ str =>
         if (str.length != 1)
@@ -242,7 +242,7 @@ object Deserializer {
       typeExpr.splice
     }
 
-    //println(expr)  // Debug
+    println(expr)  // Debug
     expr
   }
 }

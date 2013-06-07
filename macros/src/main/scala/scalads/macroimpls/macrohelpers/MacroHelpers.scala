@@ -35,6 +35,7 @@ class MacroHelpers[CTPE <: Context](val c: CTPE) {
       c.typeOf[Short]::
       c.typeOf[BigDecimal]::
       c.typeOf[Date]::
+      c.typeOf[Array[Byte]]::
       c.typeOf[scala.Symbol]::Nil
   }
 

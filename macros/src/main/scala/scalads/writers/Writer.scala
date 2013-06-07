@@ -24,7 +24,7 @@ trait Writer[T] {
   def bigDecimal(in: BigDecimal)
   def bigInt(in: BigInt)
   def short(in: Short)
-  def byte(in: Byte)
+  def bytes(in: Array[Byte])
   def long(in: Long)
   def boolean(in: Boolean)
   def date(in: Date)

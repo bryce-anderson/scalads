@@ -4,7 +4,7 @@ import language.experimental.macros
 
 import java.util.Date
 import scalads.Entity
-import com.google.appengine.api.datastore.Text
+import com.google.appengine.api.datastore.{Blob, ShortBlob, Text}
 
 /**
  * @author Bryce Anderson
@@ -12,7 +12,7 @@ import com.google.appengine.api.datastore.Text
  */
 
 
-class GAEDSWriter(entity: Entity) extends Writer[Entity] {
+class GAEWriter(entity: Entity) extends Writer[Entity] {
 
   private var writer: DSWriter = new RootWriter(entity)
 
@@ -42,7 +42,7 @@ class GAEDSWriter(entity: Entity) extends Writer[Entity] {
 
   def short(in: Short) { writer = writer.handleVal(in) }
 
-  def byte(in: Byte) { writer = writer.handleVal(in) }
+  def bytes(in: Array[Byte]) { writer = writer.handleVal(in) }
 
   def long(in: Long) { writer = writer.handleVal(in) }
 
@@ -100,6 +100,7 @@ private[writers] class ObjectWriter(val entity: Entity, val parent: DSWriter, pr
     override def handleVal(value: Any): DSWriter = {
       value match {
         case s: String => self.entity.setProperty(prefix, if(s.length > 500) new Text(s) else s)
+        case b: Array[Byte] => self.entity.setProperty(prefix, if (b.length > 500) new Blob(b) else new ShortBlob(b))
         case value => self.entity.setProperty(prefix, value)
       }
       self
