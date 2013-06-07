@@ -1,4 +1,4 @@
-package macroimpls
+package scalads.macroimpls
 
 import language.experimental.macros
 import scala.reflect.macros.Context
@@ -8,8 +8,9 @@ import Utils._
 
 import macrohelpers.MacroHelpers
 
-import writers.{GAEDSWriter, Writer}
-import com.google.appengine.api.datastore.{Key, Entity}
+import scalads.writers.{GAEDSWriter, Writer}
+
+import scalads.{Entity, Key}
 import scalads.core.EntityBacker
 
 

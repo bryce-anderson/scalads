@@ -3,7 +3,6 @@ package macros
 import org.scalatest._
 import com.google.appengine.tools.development.testing.{LocalDatastoreServiceTestConfig, LocalServiceTestHelper}
 import org.scalatest.matchers.ShouldMatchers
-import com.google.appengine.api.datastore.{Entity, Key}
 
 /**
  * @author Bryce Anderson

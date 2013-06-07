@@ -1,6 +1,7 @@
 package macros
 
-import writers.GAEDSWriter
+import scalads.writers.GAEDSWriter
+import scalads.macroimpls
 import com.google.appengine.api.datastore.FetchOptions.Builder.withLimit
 import com.google.appengine.api.datastore.{Entity, Key, Query, DatastoreServiceFactory}
 

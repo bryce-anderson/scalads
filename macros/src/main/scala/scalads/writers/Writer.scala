@@ -1,4 +1,4 @@
-package writers
+package scalads.writers
 
 import java.util.Date
 

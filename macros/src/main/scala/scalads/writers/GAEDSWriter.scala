@@ -1,9 +1,10 @@
-package writers
+package scalads.writers
+
+import language.experimental.macros
 
 import java.util.Date
-import com.google.appengine.api.datastore.Entity
-import com.google.appengine.api.datastore.{Key, Text}
-import language.experimental.macros
+import scalads.Entity
+import com.google.appengine.api.datastore.Text
 
 /**
  * @author Bryce Anderson

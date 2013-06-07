@@ -1,11 +1,10 @@
-package scalads.core
+package scalads
+package core
 
 /**
  * @author Bryce Anderson
  *         Created on 5/28/13
  */
-
-import com.google.appengine.api.datastore.{Key, Entity}
 
 /** Will be mixed in with the results returned from queries to facilitate updates
   *

@@ -1,4 +1,4 @@
-package macro_readers
+package scalads.readers
 
 import java.util.Date
 

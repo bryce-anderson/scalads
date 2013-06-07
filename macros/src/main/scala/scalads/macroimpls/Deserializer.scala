@@ -1,12 +1,13 @@
-package macroimpls
+package scalads.macroimpls
 
 import language.experimental.macros
 import scala.reflect.macros.Context
-import macroimpls.macrohelpers.MacroHelpers
-import macro_readers.GAEObjectReader
+import macrohelpers.MacroHelpers
+import scalads.readers.GAEObjectReader
 import java.text.SimpleDateFormat
-import exceptions.MappingException
-import com.google.appengine.api.datastore.Entity
+import scalads.exceptions.MappingException
+
+import scalads.Entity
 import scalads.core.EntityBacker
 
 

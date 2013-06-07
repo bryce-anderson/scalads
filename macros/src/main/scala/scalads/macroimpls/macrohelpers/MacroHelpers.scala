@@ -1,4 +1,4 @@
-package macroimpls.macrohelpers
+package scalads.macroimpls.macrohelpers
 
 import scala.reflect.macros.Context
 import java.util.Date

@@ -3,13 +3,13 @@ package scalads
 import language.experimental.macros
 import scala.reflect.macros.Context
 
-import com.google.appengine.api.datastore.{DatastoreService, DatastoreServiceFactory, Entity, Key}
+import com.google.appengine.api.datastore.{DatastoreService, DatastoreServiceFactory}
 import collection.JavaConverters._
 
 import scala.collection.mutable.ListBuffer
-import macro_readers.GAEObjectReader
-import _root_.macroimpls.{Serializer, Deserializer}
-import _root_.macroimpls.macrohelpers.MacroHelpers
+import readers.GAEObjectReader
+import macroimpls.{Serializer, Deserializer}
+import macroimpls.macrohelpers.MacroHelpers
 
 
 import scalads.core.{QueryIterator, EntityBacker, Query}

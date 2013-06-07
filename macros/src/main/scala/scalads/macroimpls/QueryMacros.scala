@@ -1,14 +1,15 @@
-package macroimpls
+package scalads.macroimpls
 
 import language.experimental.macros
 import scala.reflect.macros.Context
 import scala.util.control.Exception.catching
 
 import com.google.appengine.api.datastore.Query._
-import com.google.appengine.api.datastore.{Query => GQuery, PropertyProjection, Projection, Entity, DatastoreService}
-import macro_readers.GAEObjectReader
-import macroimpls.macrohelpers.MacroHelpers
+import com.google.appengine.api.datastore.PropertyProjection
+import scalads.readers.GAEObjectReader
+
 import scalads.core.{QueryIterator, Query}
+import scalads.Entity
 
 /**
  * @author Bryce Anderson

@@ -1,6 +1,7 @@
-package scalads.core
+package scalads
+package core
 
-import com.google.appengine.api.datastore.{Entity, QueryResultIterator, Index}
+import com.google.appengine.api.datastore.{QueryResultIterator, Index}
 
 import scala.collection.JavaConverters._
 

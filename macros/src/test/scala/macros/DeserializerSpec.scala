@@ -1,10 +1,11 @@
 package macros
 
-import com.google.appengine.api.datastore.{Entity, DatastoreServiceFactory}
-import writers.GAEDSWriter
-import macro_readers.GAEObjectReader
+import scalads.macroimpls
+import scalads.Entity
+import scalads.writers.GAEDSWriter
+import scalads.readers.GAEObjectReader
 
-import macroimpls.Deserializer.deserialize
+import scalads.macroimpls.Deserializer.deserialize
 
 /**
  * @author Bryce Anderson

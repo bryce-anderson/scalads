@@ -1,8 +1,9 @@
-package scalads.core
+package scalads
+package core
 
 import language.experimental.macros
 
-import com.google.appengine.api.datastore.{Query => GQuery, _}
+import com.google.appengine.api.datastore.{Query => GQuery, FetchOptions, Cursor, Projection}
 import com.google.appengine.api.datastore.Query.{SortDirection, Filter}
 import macroimpls.QueryMacros
 import scalads.Datastore
@@ -48,7 +49,7 @@ class Query[U](ds: Datastore, gQuery: GQuery, deserializer: Entity => U with Ent
 
   // Macro impls
 
-  def project[R](f: U => R): QueryIterator[R] =         macro QueryMacros.project[U, R]
+  def project[R](f: U => R): QueryIterator[R] =     macro QueryMacros.project[U, R]
 
   def sortAscBy(f: U => Any): Query[U] =            macro QueryMacros.sortImplAsc[U]
 

@@ -1,4 +1,4 @@
-package exceptions
+package scalads.exceptions
 
 /**
  * @author Bryce Anderson
