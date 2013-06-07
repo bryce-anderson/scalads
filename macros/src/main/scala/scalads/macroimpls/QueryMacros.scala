@@ -78,7 +78,7 @@ object QueryMacros {
       }.foldLeft(c.prefix){ (q, either) => either match {
         case Right(str) if !projections.contains(str) =>
           projections = str::projections
-          reify{q.splice.setProjection(new PropertyProjection(c.literal(str).splice, setType(fieldTypes(str)).splice))}
+          reify{q.splice.addProjection(new PropertyProjection(c.literal(str).splice, setType(fieldTypes(str)).splice))}
         case _ => q
         }
       }

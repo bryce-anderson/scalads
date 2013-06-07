@@ -63,8 +63,8 @@ class QuerySpec extends GAESpecTemplate {
 
     val results = ds.query[Test]
       .filter(_.in > 0)
-      .sortAscBy(_.in)
-      .sortDecBy(_.in2)
+      .sortAsc(_.in)
+      .sortDec(_.in2)
       .getIterator.toList
 
     results.length should equal (9)

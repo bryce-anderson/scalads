@@ -45,15 +45,15 @@ class Query[U](ds: Datastore, gQuery: GQuery, deserializer: Entity => U with Ent
 
   def sortBy(field: String, dir: SortDirection) = new Query[U](ds, gQuery.addSort(field, dir), deserializer)
 
-  def setProjection(proj: Projection): self.type = { gQuery.addProjection(proj); self }
+  def addProjection(proj: Projection): self.type = { gQuery.addProjection(proj); self }
 
   // Macro impls
 
   def project[R](f: U => R): QueryIterator[R] =     macro QueryMacros.project[U, R]
 
-  def sortAscBy(f: U => Any): Query[U] =            macro QueryMacros.sortImplAsc[U]
+  def sortAsc(f: U => Any): Query[U] =            macro QueryMacros.sortImplAsc[U]
 
-  def sortDecBy(f: U => Any): Query[U] =            macro QueryMacros.sortImplDesc[U]
+  def sortDec(f: U => Any): Query[U] =            macro QueryMacros.sortImplDesc[U]
 
   def filter(f: U => Boolean): Query[U] =           macro QueryMacros.filterImpl[U]
 }
