@@ -17,6 +17,7 @@ class Query[U](ds: Datastore, gQuery: GQuery, deserializer: Entity => U with Ent
 
   protected val fetchOptions = FetchOptions.Builder.withDefaults()
 
+
   def limit(size: Int) = new Query[U](ds, gQuery, deserializer) {
     override val fetchOptions = self.fetchOptions.limit(size)
   }
@@ -45,7 +46,15 @@ class Query[U](ds: Datastore, gQuery: GQuery, deserializer: Entity => U with Ent
 
   def sortBy(field: String, dir: SortDirection) = new Query[U](ds, gQuery.addSort(field, dir), deserializer)
 
-  def addProjection(proj: Projection): self.type = { gQuery.addProjection(proj); self }
+  private var projections: List[String] = Nil
+
+  def addProjection(proj: Projection): self.type = {
+    if (!projections.contains(proj.getName)) {
+      projections = proj.getName::projections
+      gQuery.addProjection(proj)
+    }
+    self
+  }
 
   // Macro impls
 

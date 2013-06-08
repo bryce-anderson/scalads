@@ -69,15 +69,13 @@ object QueryMacros {
     }
 
     val qExpr = {
-      var projections: List[String] = Nil
       args.map{tree =>
         try{ Right(findName(c)(tree, name))
         } catch {
           case _: MatchError => Left(tree)
         }
       }.foldLeft(c.prefix){ (q, either) => either match {
-        case Right(str) if !projections.contains(str) =>
-          projections = str::projections
+        case Right(str) =>
           reify{q.splice.addProjection(new PropertyProjection(c.literal(str).splice, setType(fieldTypes(str)).splice))}
         case _ => q
         }

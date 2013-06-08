@@ -108,4 +108,5 @@ class DeserializerSpec extends GAESpecTemplate {
 
     simple1 should equal (simple2)
   }
+
 }

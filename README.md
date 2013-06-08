@@ -79,7 +79,7 @@ val favoriteNumber = 7
 
 val it = ds.query[Person]
     .filter(p => p.age > 21)
-    .sortAsc(_.age)
+    .sortAsc(_.age)       // Shortcut for .sortAsc(p => p.age)
     .project(p => (p.name, favoriteNumber))
 
 for(p <- it) println(s"Hello ${p._1}. You get a favorite number: ${p._2}")
