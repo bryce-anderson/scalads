@@ -13,7 +13,7 @@ trait Writer[T] {
 
   def startArray()
   def endArray()
-  def startObject(objType: String)
+  def startObject()
   def endObject()
   def startField(name: String)
 

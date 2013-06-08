@@ -4,7 +4,8 @@ import language.experimental.macros
 
 import java.util.Date
 import scalads.Entity
-import com.google.appengine.api.datastore.{Blob, ShortBlob, Text}
+import com.google.appengine.api.datastore._
+import java.util
 
 /**
  * @author Bryce Anderson
@@ -18,11 +19,11 @@ class GAEWriter(entity: Entity) extends Writer[Entity] {
 
   def result = entity
 
-  def startArray() {  sys.error("GAE Entities don't support Arrays") }
+  def startArray() { writer = writer.startArray() }
 
-  def endArray() {  sys.error("GAE Entities don't support Arrays") }
+  def endArray() { writer = writer.endArray() }
 
-  def startObject(objType: String = "object") {  writer = writer.startObject(objType) }
+  def startObject() {  writer = writer.startObject() }
 
   def endObject() {  writer = writer.endObject() }
 
@@ -55,26 +56,38 @@ class GAEWriter(entity: Entity) extends Writer[Entity] {
 
 trait DSWriter { self =>
   protected def parent: DSWriter
-  protected def entity: Entity
-  def startObject(objType: String = "object"): DSWriter
+  protected def container: PropertyContainer
 
-  private[writers] def handleVal(value: Any): DSWriter = error("handleVal")
+  def startObject(): ObjectWriter
+  def startArray(): ArrayWriter
+
+  private[writers] def handleVal(value: Any): DSWriter
 
   protected final def error(op: String) = sys.error(s"Writer ${this.getClass.toString} cannot perform $op")
 
-  def endObject(): DSWriter = parent
+  def endObject(): DSWriter
+
+  def endArray(): DSWriter
 
   def startField(name: String): DSWriter = error("startField")
 }
 
 class RootWriter(val rootEntity: Entity) extends DSWriter { self =>
 
+  protected def container: PropertyContainer = rootEntity
+
+  def startArray(): ArrayWriter = error("startArray")
+
+  def handleVal(value: Any): DSWriter = error("handleVal")
+
+  def endArray(): DSWriter = error("endArray")
+
   def parent: DSWriter = sys.error("RootWriter doesn't have a parent")
 
   private var finished = false
   protected def entity = rootEntity
 
-  override def startObject(objType: String): DSWriter = {
+  override def startObject(): ObjectWriter = {
     if (finished) sys.error("RootWriter already started. Cannot start a new object!")
     else new ObjectWriter(entity, this, "")
   }
@@ -82,29 +95,73 @@ class RootWriter(val rootEntity: Entity) extends DSWriter { self =>
   override def endObject() = { finished = true; self }
 }
 
-private[writers] class ObjectWriter(val entity: Entity, val parent: DSWriter, prefix: String) extends DSWriter { self =>
+// On ending this object, the parent is returned.
+private[writers] class ObjectWriter(val container: PropertyContainer, val parent: DSWriter, prefix: String) extends DSWriter { self =>
+
+  def endObject(): DSWriter = parent
+
+  def endArray(): DSWriter = error("endArray")
+
   override def handleVal(value: Any): DSWriter = error("handleVal")
 
-  def startObject(objType: String): DSWriter = error("startObject")
+  def startObject(): ObjectWriter = error("startObject")
 
-  override def startField(name: String) = new DSWriter {
-    def entity = self.entity
-    def parent = self
+  def startArray() = error("startArray")
 
-    val prefix = if(self.prefix == "") name else self.prefix + "." + name
+  override def startField(name: String) = new FieldWriter(self, if(self.prefix == "") name else self.prefix + "." + name)
+}
 
-    override def startObject(objType: String = "object"): DSWriter = {
-      new ObjectWriter(entity, self, prefix)
-    }
+private[writers] class FieldWriter(val parent: ObjectWriter, prefix: String) extends DSWriter with GAEWriteHandler { self =>
 
-    override def handleVal(value: Any): DSWriter = {
-      value match {
-        case s: String => self.entity.setProperty(prefix, if(s.length > 500) new Text(s) else s)
-        case b: Array[Byte] => self.entity.setProperty(prefix, if (b.length > 500) new Blob(b) else new ShortBlob(b))
-        case value => self.entity.setProperty(prefix, value)
-      }
-      self
-    }
+  def endObject(): DSWriter = error("endObject")
+
+  def endArray(): DSWriter = error("endArray")
+
+  def container = parent.container
+
+  override def startObject(): ObjectWriter = {
+    new ObjectWriter(container, parent, prefix)
+  }
+
+  override def startArray(): ArrayWriter = new ArrayWriter(self)
+
+  override def handleVal(value: Any): DSWriter = {
+    container.setProperty(prefix, handleGAEVal(value))
+    parent
+  }
+}
+
+// on ending the array, the array is added using parent.handleVal and the reader returned should be the underlying reader
+private[writers] class ArrayWriter(val parent: DSWriter) extends DSWriter with GAEWriteHandler { self =>
+
+  private val arr = new java.util.LinkedList[Any]()
+
+  def endObject(): DSWriter = error("endObject")
+
+  def endArray(): DSWriter = parent.handleVal(arr)
+
+  protected def container: PropertyContainer = error("container")
+
+  def startObject(): ObjectWriter = {
+    val container = new EmbeddedEntity()
+    handleVal(container)
+    new ObjectWriter(container, self, "")
+  }
+
+  def startArray(): ArrayWriter = new ArrayWriter(self)
+
+  override def handleVal(value: Any): DSWriter = {
+    arr.add(handleGAEVal(value))
+    self
+  }
+}
+
+// Just a helper that filters types for GAE
+trait GAEWriteHandler {
+  def handleGAEVal(value: Any): Any = value match {
+    case s: String => if(s.length > 500) new Text(s) else s
+    case b: Array[Byte] => if (b.length > 500) new Blob(b) else new ShortBlob(b)
+    case value => value
   }
 }
 

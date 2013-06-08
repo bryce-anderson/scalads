@@ -1,6 +1,7 @@
 package scalads
 package core
 
+
 /**
  * @author Bryce Anderson
  *         Created on 5/28/13

@@ -115,7 +115,6 @@ class QuerySpec extends GAESpecTemplate {
     opt._8 should  equal("cats")
   }
 
-  //class Compound(in: Int, in2: Test)
   it should "project compound objects" in {
     val comp = Compound(1, Test(1, "one"))
     ds.put(comp)
@@ -126,5 +125,22 @@ class QuerySpec extends GAESpecTemplate {
 
     result._1 should equal(comp.in)
     result._2 should equal(comp.in2.in)
+  }
+
+  "Datastore" should "put java collections in the datastore" in {
+    import com.google.appengine.api.datastore.Entity
+    import com.google.appengine.api.datastore.EmbeddedEntity
+    import scala.collection.convert.WrapAsJava.asJavaCollection
+
+    val emb = new EmbeddedEntity()
+    emb.setProperty("cool", 5)
+
+    val a = asJavaCollection(emb::1::"cat"::Nil)  // This is serializable
+
+    val e = new Entity("test")
+    e.setProperty("lst", a)
+
+    val lst = e.getProperty("lst").asInstanceOf[java.util.Collection[Any]]
+    lst.iterator().next().asInstanceOf[EmbeddedEntity].getProperty("cool") should equal (5)
   }
 }

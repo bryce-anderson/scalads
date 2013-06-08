@@ -61,42 +61,17 @@ trait ObjectReader extends Reader {
 }
 
 trait ArrayIterator extends Reader {
-
-  // Option forms
-  def getNextObjectReader: Option[ObjectReader]
-  def getNextArrayReader: Option[ArrayIterator]
-  def getNextInt: Option[Int]
-  def getNextLong: Option[Long]
-  def getNextFloat: Option[Float]
-  def getNextDouble: Option[Double]
-  def getNextBigInt: Option[BigInt]
-  def getNextBigDecimal: Option[BigDecimal]
-  def getNextBool: Option[Boolean]
-  def getNextString: Option[String]
-  def getNextDate: Option[Date]
-
   // Direct forms with default impl based on the option forms
   def hasNext: Boolean
-  def nextObjectReader: ObjectReader =
-    getNextObjectReader.getOrElse(failStructure("JsonArray next value is not of type 'object'"))
-  def nextArrayReader: ArrayIterator =
-    getNextArrayReader.getOrElse(failStructure("JsonArray next value is not of type 'array'"))
-  def nextInt: Int =
-    getNextInt.getOrElse(failStructure("JsonArray next value is not of type 'Int'"))
-  def nextLong: Long =
-    getNextLong.getOrElse(failStructure("JsonArray next value is not of type 'Long'"))
-  def nextFloat: Float =
-    getNextFloat.getOrElse(failStructure("JsonArray next value is not of type 'Float'"))
-  def nextDouble: Double =
-    getNextDouble.getOrElse(failStructure("JsonArray next value is not of type 'Double'"))
-  def nextBigInt: BigInt =
-    getNextBigInt.getOrElse(failStructure("JsonArray next value is not of type 'BigInt'"))
-  def nextBigDecimal: BigDecimal =
-    getNextBigDecimal.getOrElse(failStructure("JsonArray next value is not of type 'BigDecimal'"))
-  def nextBool: Boolean =
-    getNextBool.getOrElse(failStructure("JsonArray next value is not of type 'Boolean'"))
-  def nextString: String =
-    getNextString.getOrElse(failStructure("JsonArray next value is not of type 'String'"))
-  def nextDate: Date =
-    getNextDate.getOrElse(failStructure("JsonArray next value is not of type 'Date'"))
+  def nextObjectReader: ObjectReader
+  def nextArrayReader: ArrayIterator
+  def nextInt: Int
+  def nextLong: Long
+  def nextFloat: Float
+  def nextDouble: Double
+  def nextBigInt: BigInt
+  def nextBigDecimal: BigDecimal
+  def nextBool: Boolean
+  def nextString: String
+  def nextDate: Date
 }

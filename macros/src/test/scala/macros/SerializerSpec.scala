@@ -3,9 +3,10 @@ package macros
 import scalads.writers.GAEWriter
 import scalads.macroimpls
 import com.google.appengine.api.datastore.FetchOptions.Builder.withLimit
-import com.google.appengine.api.datastore.{Entity, Key, Query, DatastoreServiceFactory}
+import com.google.appengine.api.datastore.{Entity, Query, DatastoreServiceFactory}
 
 import scalads.Datastore
+import scalads.readers.GAEObjectReader
 
 
 /**
@@ -61,5 +62,23 @@ class SerializerSpec extends GAESpecTemplate {
     }
 
     ds.prepare(new Query("macros.SerializerSpec.Compound")).countEntities(withLimit(10)) should equal (1)
+  }
+
+  "Serializer" should "serialize objects with Lists" in {
+    case class WithList(name: String, lst: List[Simple])
+
+    val ds = DatastoreServiceFactory.getDatastoreService()
+
+    val a = WithList("Bill", Simple(1, "one")::Simple(2, "two")::Nil)
+    val writer = new GAEWriter(new Entity("macros.SerializerSpec.Compound"))
+    macroimpls.Serializer.serialize(a, writer)
+
+    val key = ds.put(writer.result)
+
+    val entity = ds.get(key)
+    val reader = new GAEObjectReader(entity, "")
+    val result = macroimpls.Deserializer.deserialize[WithList](reader)
+
+    result should equal(a)
   }
 }

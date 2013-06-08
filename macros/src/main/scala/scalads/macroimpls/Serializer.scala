@@ -75,12 +75,23 @@ object Serializer {
       }
 
       reify{
-        writer.splice.startObject("map")
+        writer.splice.startObject()
         c.Expr[scala.collection.GenMap[_, _]](path).splice.foreach { case (k, v) =>
           writer.splice.startField(k.toString)
           c.Expr(buildTpe(valTpe, Ident(newTermName("v")))).splice
         }
         writer.splice.endObject()
+      }
+    }
+
+    def listExpr(tpe: Type, path: Tree): Expr[Unit] = {
+      val TypeRef(_, _:Symbol, pTpe::Nil) = tpe
+      reify{
+        writer.splice.startArray()
+        c.Expr[scala.collection.Seq[Any]](path).splice.foreach { i =>
+          c.Expr(buildTpe(pTpe, Ident(newTermName("i")))).splice
+        }
+        writer.splice.endArray()
       }
     }
 
@@ -113,13 +124,13 @@ object Serializer {
 
       val nameExpr = classNameExpr(oldTpe)
       // Return add all the blocks for each field and pop this obj off the stack
-      Block(reify(writer.splice.startObject(nameExpr.splice)).tree::ctorTrees:::
+      Block(reify(writer.splice.startObject()).tree::ctorTrees:::
         reify{writer.splice.endObject()}.tree::Nil, reify{}.tree)
     }
 
     def buildTpe(tpe: Type, path: Tree): Tree = primitiveTypes.find(_._1 =:= tpe)
       .map{ case (_, f) => f(path).tree }
-      .orElse{if(tpe <:< typeOf[scala.collection.Seq[_]]) macroError(s"Sequences are not supported"); None }
+      .orElse{if(tpe <:< typeOf[scala.collection.Seq[_]]) {Some(listExpr(tpe, path).tree)} else None }
       .orElse{if(tpe <:< typeOf[scala.collection.GenMap[_, _]]) { Some(mapExpr(tpe, path).tree) } else None}
       .orElse{if(tpe <:< typeOf[Option[_]]) Some(optionExpr(tpe, path).tree) else None }
       .getOrElse(complexObject(tpe, path))
