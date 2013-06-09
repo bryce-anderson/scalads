@@ -7,7 +7,7 @@ import scalads.readers.{ObjectReader, ArrayIterator, GAEObjectReader}
 import java.text.SimpleDateFormat
 import scalads.exceptions.MappingException
 
-import scalads.Entity
+import scalads.{Datastore, Entity}
 import scalads.core.EntityBacker
 
 
@@ -15,9 +15,9 @@ object Deserializer {
 
   import java.util.Date
 
-  def deserialize[U](reader: GAEObjectReader): U with EntityBacker[U] = macro deserializeImpl[U]
+  def deserialize[U](reader: GAEObjectReader): U = macro deserializeImpl[U]
 
-  def deserializeImpl[U: c.WeakTypeTag](c: Context)(reader: c.Expr[GAEObjectReader]): c.Expr[U with EntityBacker[U]] = {
+  def deserializeImpl[U: c.WeakTypeTag](c: Context)(reader: c.Expr[ObjectReader]): c.Expr[U] = {
 
     val helpers = new MacroHelpers[c.type](c)
     import helpers.{isPrimitive, typeArgumentTree, macroError, buildObjParamExtract}
@@ -247,51 +247,9 @@ object Deserializer {
 
     val tpe = weakTypeOf[U]
 
-    def extendWithEntityBacker(tree: Tree): c.Expr[U with EntityBacker[U]] = {
-      val appliedTpeTree = helpers.typeArgumentTree(tpe)
-      val TypeRef(_, backerSym, _) = typeOf[EntityBacker[Any]]
-      val (ctorTree: List[List[Tree]], readerTree) = buildObjParamExtract(tree)
+    val expr = c.Expr[U](buildObject(tpe, reader))
 
-      val updateTree = Serializer.serializeToEntityImpl[U](c)(
-        c.Expr[U](Ident(newTermName("obj"))), c.Expr[Entity](Ident(newTermName("entity")))
-      ).tree
-
-      // Builds the augmentation methods
-      val newTree = Block(List(
-        readerTree: Tree,
-        ClassDef(Modifiers(Flag.FINAL), newTypeName("$anon"), List(), Template(List(appliedTpeTree, AppliedTypeTree(Ident(backerSym), List(appliedTpeTree))),
-          ValDef(Modifiers(Flag.PRIVATE), newTermName("self"), TypeTree(), EmptyTree) , List(
-            DefDef(Modifiers(), nme.CONSTRUCTOR, Nil, Nil::Nil, TypeTree(),
-              Block(
-                ctorTree.foldLeft[Tree](Select(Super(This(tpnme.EMPTY), tpnme.EMPTY), nme.CONSTRUCTOR))
-                  {(a,b: List[Tree]) => Apply(a,b)}::Nil,
-                Literal(Constant(()))
-              )
-            ),
-          // TODO: This will need to be changed as not all datastores will use Entities...
-            ValDef(Modifiers(), newTermName("ds_backingEntity"), TypeTree(typeOf[Entity]), reify(reader.splice.entity.asInstanceOf[Entity]).tree): Tree,
-            DefDef(Modifiers(), newTermName("ds_serialize"), Nil, List(
-              ValDef(Modifiers(Flag.PARAM), newTermName("obj"), typeArgumentTree(tpe), EmptyTree)::
-              ValDef(Modifiers(Flag.PARAM), newTermName("entity"), TypeTree(typeOf[Entity]), EmptyTree)::Nil
-            ), TypeTree(typeOf[Unit]), updateTree)
-          ))
-        )),
-        Apply(Select(New(Ident(newTypeName("$anon"))), nme.CONSTRUCTOR), List())
-      )
-      c.Expr[U with EntityBacker[U]](newTree)
-    }
-
-    val typeExpr: c.Expr[U with EntityBacker[U]] = {
-      val tree = buildObject(tpe,c.Expr[ObjectReader](Ident(newTermName("r"))))
-      extendWithEntityBacker(tree)
-    }
-
-    val expr = reify {
-      val r = reader.splice
-      typeExpr.splice
-    }
-
-    println(expr)  // Debug
+    //println(expr)  // Debug
     expr
   }
 }

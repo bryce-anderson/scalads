@@ -4,6 +4,7 @@ package core
 import com.google.appengine.api.datastore.{QueryResultIterator, Index}
 
 import scala.collection.JavaConverters._
+import scalads.readers.{GAEObjectReader, ObjectReader}
 
 /**
  * @author Bryce Anderson
@@ -11,7 +12,9 @@ import scala.collection.JavaConverters._
  */
 
 class QueryIterator[+A]
-    (it: QueryResultIterator[Entity], val deserializer: Entity => A) extends Iterator[A] {
+    (it: QueryResultIterator[Entity],
+     ds: Datastore,
+     val deserializer: (Datastore, ObjectReader) => A) extends Iterator[A] {
 
   def getCursor(): String = it.getCursor.toWebSafeString
 
@@ -23,12 +26,12 @@ class QueryIterator[+A]
 
   def nextWithEntity(): (Entity, A) = {
     val entity = nextEntity()
-    (entity, deserializer(entity))
+    (entity, deserializer(ds, new GAEObjectReader(entity, "")))
   }
 
-  override def map[B](f: A => B) = new QueryIterator[B](it, e => f(deserializer(e)))
+  override def map[B](f: A => B) = new QueryIterator[B](it, ds, (ds, e) => f(deserializer(ds, e)))
 
   override def hasNext(): Boolean = it.hasNext
 
-  override def next(): A = deserializer(nextEntity())
+  override def next(): A = deserializer(ds, new GAEObjectReader(nextEntity(), ""))
 }

@@ -7,7 +7,7 @@ import com.google.appengine.api.datastore.{DatastoreService, DatastoreServiceFac
 import collection.JavaConverters._
 
 import scala.collection.mutable.ListBuffer
-import readers.GAEObjectReader
+import scalads.readers.{ObjectReader, Reader, GAEObjectReader}
 import macroimpls.{Serializer, Deserializer}
 import macroimpls.macrohelpers.MacroHelpers
 
@@ -70,10 +70,12 @@ object Datastore {
     import c.universe._
 
     val nameExpr = helpers.classNameExpr(weakTypeOf[U])
-    val deserializeExpr = Deserializer.deserializeImpl[U](c)(c.Expr[GAEObjectReader](Ident(newTermName("reader"))))
+    val deserializeExpr = macroimpls.EntityDeserializer.extendWithEntityBacker[U](c)(
+      c.Expr[Datastore](Ident(newTermName("ds"))),
+      c.Expr[GAEObjectReader](Ident(newTermName("reader")))
+    )
     reify (
-      new Query[U](c.prefix.splice, new GQuery(nameExpr.splice),{ entity: Entity =>
-        val reader = GAEObjectReader(entity)
+      new Query[U](c.prefix.splice, new GQuery(nameExpr.splice),{ (ds: Datastore, reader: ObjectReader) =>
         deserializeExpr.splice
       })
     )

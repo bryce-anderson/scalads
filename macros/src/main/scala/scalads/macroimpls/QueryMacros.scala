@@ -103,13 +103,10 @@ object QueryMacros {
       })
     }
 
-    val entityExpr = c.Expr[Entity](Ident(newTermName("entity")))
-    val Block(readerTree::Nil, _) = reify{val reader = new GAEObjectReader(entityExpr.splice, "")}.tree
+    val applyExpr = c.Expr[R](Block(Nil, Apply(ctorTree, entityExtractors)))
 
-    val applyExpr = c.Expr[R](Block(readerTree::Nil, Apply(ctorTree, entityExtractors)))
-
-    val result = reify(qExpr.splice.mapIterator{entity => applyExpr.splice })
-    //println(result)
+    val result = reify(qExpr.splice.mapIterator{ reader => applyExpr.splice })
+    println(s"Projection: $result")
     result
   }
 

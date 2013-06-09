@@ -7,13 +7,14 @@ import com.google.appengine.api.datastore.{Query => GQuery, FetchOptions, Cursor
 import com.google.appengine.api.datastore.Query.{SortDirection, Filter}
 import macroimpls.QueryMacros
 import scalads.Datastore
+import scalads.readers.{ObjectReader, Reader}
 
 /**
  * @author Bryce Anderson
  *         Created on 5/30/13
  */
 
-class Query[U](ds: Datastore, gQuery: GQuery, deserializer: Entity => U with EntityBacker[U]) { self =>
+class Query[U](ds: Datastore, gQuery: GQuery, deserializer: (Datastore, ObjectReader) => U with EntityBacker[U]) { self =>
 
   protected val fetchOptions = FetchOptions.Builder.withDefaults()
 
@@ -30,9 +31,11 @@ class Query[U](ds: Datastore, gQuery: GQuery, deserializer: Entity => U with Ent
     override val fetchOptions = self.fetchOptions.startCursor(Cursor.fromWebSafeString(offset))
   }
 
-  def getIterator: QueryIterator[U with EntityBacker[U]] = mapIterator(deserializer)
+  def getIterator: QueryIterator[U with EntityBacker[U]] = new QueryIterator(runQuery, ds, deserializer)
 
-  def mapIterator[R](f: Entity => R): QueryIterator[R] = new QueryIterator(runQuery, f)
+  def mapIterator[T](f: (Datastore, ObjectReader) => T): QueryIterator[T] = new QueryIterator(runQuery, ds, f)
+
+  def mapIterator[T](f: ObjectReader => T): QueryIterator[T] = mapIterator( (_, r) => f(r) )
 
   def runQuery = ds.ds.prepare(gQuery).asQueryResultIterator(fetchOptions)
 

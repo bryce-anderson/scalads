@@ -64,7 +64,6 @@ class DeserializerSpec extends GAESpecTemplate {
     val reader = GAEObjectReader(entity)
 
     val compound = deserialize[Compound](reader)
-    println(compound.ds_key)
 
     compound should equal (myCompound)
   }
