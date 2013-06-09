@@ -4,12 +4,10 @@ import language.experimental.macros
 import scala.reflect.macros.Context
 import scala.util.control.Exception.catching
 
-import com.google.appengine.api.datastore.Query._
-import com.google.appengine.api.datastore.PropertyProjection
-import scalads.readers.GAEObjectReader
-
-import scalads.core.{QueryIterator, Query}
-import scalads.Entity
+import scalads.core._
+import scalads.readers.ObjectReader
+import scala.Some
+import scalads.core.Filter
 
 /**
  * @author Bryce Anderson
@@ -33,7 +31,10 @@ object QueryMacros {
     findName(tree, Nil)
   }
 
-  def project[U: c.WeakTypeTag, R](c: Context { type PrefixType = Query[U]})(f: c.Expr[U => R]): c.Expr[QueryIterator[R]] = {
+  def project[U: c.WeakTypeTag, R, E](c: Context { type PrefixType = Query[U]})(f: c.Expr[U => R]): c.Expr[QueryIterator[R, E]] = {
+    val helpers = new macrohelpers.MacroHelpers[c.type](c)
+    import helpers.mkStringList
+
     import c.universe._
 
     val Function(List(ValDef(_, name, _, _)), body) = f.tree
@@ -70,19 +71,20 @@ object QueryMacros {
 
     val qExpr = {
       args.map{tree =>
-        try{ Right(findName(c)(tree, name))
+        try{ Right(findPath(c)(tree, name))
         } catch {
           case _: MatchError => Left(tree)
         }
       }.foldLeft(c.prefix){ (q, either) => either match {
-        case Right(str) =>
-          reify{q.splice.addProjection(new PropertyProjection(c.literal(str).splice, setType(fieldTypes(str)).splice))}
+        case Right(path) =>
+          val stackExpr = mkStringList(path)
+          reify{q.splice.addProjection(Projection(stackExpr.splice))}
         case _ => q
         }
       }
     }
 
-    def pathReader(reader: c.Expr[GAEObjectReader], stack: List[String]): (c.Expr[GAEObjectReader], String) = stack match {
+    def pathReader(reader: c.Expr[ObjectReader], stack: List[String]): (c.Expr[ObjectReader], String) = stack match {
       case str::Nil => (reader, str)
       case h::t =>  val name = c.literal(h); pathReader(reify(reader.splice.getObjectReader(name.splice)), t)
     }
@@ -90,7 +92,7 @@ object QueryMacros {
     val entityExtractors: List[Tree] = args.map{tree => try {Right(findPath(c)(tree, name))} catch {case m: MatchError => Left(tree)} }
       .map{ treeOrName =>
       treeOrName.fold( identity, { nameStack =>
-        val (readerExpr, key) = pathReader(c.Expr[GAEObjectReader](Ident(newTermName("reader"))), nameStack)
+        val (readerExpr, key) = pathReader(c.Expr[ObjectReader](Ident(newTermName("reader"))), nameStack)
         val nameExpr = c.literal(key)
         fieldTypes(nameStack.mkString(".")) match {
           case tpe if tpe =:= typeOf[Int] || tpe=:= typeOf[java.lang.Integer] => reify{readerExpr.splice.getInt(nameExpr.splice)}.tree
@@ -110,7 +112,7 @@ object QueryMacros {
     result
   }
 
-  def sortImplGeneric[U: c.WeakTypeTag](c: Context {type PrefixType = Query[U]})(f: c.Expr[U => Any], dir: c.Expr[SortDirection]): c.Expr[Query[U]] = {
+  def sortImplGeneric[U: c.WeakTypeTag](c: Context {type PrefixType = Query[U]})(f: c.Expr[U => Any], dir: c.Expr[SortDir]): c.prefix.type = {
     import c.universe._
 
     val Function(List(ValDef(_, name, _, _)), body) = f.tree
@@ -122,17 +124,20 @@ object QueryMacros {
     result
   }
 
-  def sortImplAsc[U: c.WeakTypeTag](c: Context {type PrefixType = Query[U]})(f: c.Expr[U => Any]): c.Expr[Query[U]] = {
+  def sortImplAsc[U: c.WeakTypeTag](c: Context {type PrefixType = Query[U]})(f: c.Expr[U => Any]): c.prefix.type = {
     import c.universe._
-    sortImplGeneric(c)(f, reify(SortDirection.ASCENDING))
+    sortImplGeneric(c)(f, reify(SortDirection.asc))
   }
 
-  def sortImplDesc[U: c.WeakTypeTag](c: Context {type PrefixType = Query[U]})(f: c.Expr[U => Any]): c.Expr[Query[U]] = {
+  def sortImplDesc[U: c.WeakTypeTag](c: Context {type PrefixType = Query[U]})(f: c.Expr[U => Any]): c.prefix.type = {
     import c.universe._
-    sortImplGeneric(c)(f, reify(SortDirection.DESCENDING))
+    sortImplGeneric(c)(f, reify(SortDirection.desc))
   }
 
-  def filterImpl[U: c.WeakTypeTag](c: Context {type PrefixType = Query[U]})(f: c.Expr[U => Boolean]): c.Expr[Query[U]] = {
+  def filterImpl[U: c.WeakTypeTag](c: Context {type PrefixType = Query[U]})(f: c.Expr[U => Boolean]): c.prefix.type = {
+    val helpers = new macrohelpers.MacroHelpers[c.type](c)
+    import helpers.mkStringList
+
     import c.universe._
 
     val Function(List(ValDef(_, name, _, _)), body) = f.tree
@@ -142,23 +147,23 @@ object QueryMacros {
       case _ =>
     }
 
-    def makeFilter(operation: Name, name: String, value: Tree): c.Expr[FilterPredicate] = {
-      val op: c.Expr[FilterOperator] = operation.decoded match {
-        case "<"  =>    reify(FilterOperator.LESS_THAN)
-        case ">"  =>    reify(FilterOperator.GREATER_THAN)
-        case "<=" =>    reify(FilterOperator.LESS_THAN_OR_EQUAL)
-        case ">=" =>    reify(FilterOperator.GREATER_THAN_OR_EQUAL)
-        case "==" =>    reify(FilterOperator.EQUAL)
-        case "!=" =>    reify(FilterOperator.NOT_EQUAL)
+    def makeFilter(operation: Name, path: List[String], value: Tree): c.Expr[Filter] = {
+      val op: c.Expr[Operation.Operation] = operation.decoded match {
+        case "<"  =>    reify(Operation.lt)
+        case ">"  =>    reify(Operation.gt)
+        case "<=" =>    reify(Operation.le)
+        case ">=" =>    reify(Operation.ge)
+        case "==" =>    reify(Operation.eq)
+        case "!=" =>    reify(Operation.ne)
         case _ => sys.error("Failed to find operator")
       }
-      val nameExpr = c.Expr[String](Literal(Constant(name)))
-      reify (new FilterPredicate(nameExpr.splice, op.splice, c.Expr[Any](value).splice))
+      val nameExpr = mkStringList(path)
+      reify (SingleFilter(Projection(nameExpr.splice), op.splice, c.Expr[Any](value).splice))
     }
 
-    def makeComposite(f1: c.Expr[Filter], f2: c.Expr[Filter], operation: Name): c.Expr[CompositeFilter] = operation.encoded match {
-      case "$bar$bar" =>       reify(CompositeFilterOperator.or(f1.splice, f2.splice))
-      case "$amp$amp" =>       reify(CompositeFilterOperator.and(f1.splice, f2.splice))
+    def makeComposite(f1: c.Expr[Filter], f2: c.Expr[Filter], operation: Name): c.Expr[CompositeFilter] = operation.decoded match {
+      case "||" =>       reify(CompositeFilter(f1.splice, f2.splice, JoinOperation.or))
+      case "&&" =>       reify(CompositeFilter(f1.splice, f2.splice, JoinOperation.and))
       case _ => sys.error("Failed to find operator")
     }
 
@@ -174,9 +179,9 @@ object QueryMacros {
         makeComposite(decompose(t1), decompose(t2), operator)
 
       case Apply(Select(firstTree, operation), List(secondTree)) =>
-        try { makeFilter(operation, findName(c)(firstTree, name), secondTree) } catch {
+        try { makeFilter(operation, findPath(c)(firstTree, name), secondTree) } catch {
           // Try it backwards
-          case e: MatchError => makeFilter(operation, findName(c)(secondTree, name), firstTree)
+          case e: MatchError => makeFilter(operation, findPath(c)(secondTree, name), firstTree)
         }
     } } catch {
       case e: MatchError => c.error(c.enclosingPosition, s"Cannot decompose operation the operation: $tree"); sys.error("")

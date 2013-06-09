@@ -1,12 +1,12 @@
 package macros
 
-import scalads.writers.GAEWriter
 import scalads.macroimpls
 import com.google.appengine.api.datastore.FetchOptions.Builder.withLimit
 import com.google.appengine.api.datastore.{Entity, Query, DatastoreServiceFactory}
 
-import scalads.Datastore
-import scalads.readers.GAEObjectReader
+import scalads.AbstractDatastore
+import scalads.appengine.readers.GAEObjectReader
+import scalads.appengine.writers.GAEWriter
 
 
 /**
@@ -32,7 +32,7 @@ class SerializerSpec extends GAESpecTemplate {
     case class SuperString(str: String)
 
     val a = SuperString("hello"*500)
-    val ds = Datastore.getDatastoreService()
+    val ds = AbstractDatastore.getDatastoreService()
 
     ds.put(a)
 

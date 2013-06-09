@@ -1,11 +1,11 @@
-package scalads.writers
+package scalads.appengine.writers
 
 import language.experimental.macros
 
 import java.util.Date
-import scalads.Entity
 import com.google.appengine.api.datastore._
 import java.util
+import scalads.writers.Writer
 
 /**
  * @author Bryce Anderson

@@ -15,6 +15,10 @@ sealed trait Reader {
 }
 
 trait ObjectReader extends Reader {
+  type E <: AnyRef
+
+  def entity: E
+
   def getKeys: Set[String]
 
   def hasKey(str: String) = getKeys.exists( _ == str)
@@ -61,6 +65,9 @@ trait ObjectReader extends Reader {
 }
 
 trait ArrayIterator extends Reader {
+  type E <: AnyRef
+  def entity: E
+
   // Direct forms with default impl based on the option forms
   def hasNext: Boolean
   def nextObjectReader: ObjectReader

@@ -3,10 +3,8 @@ package core
 
 import language.experimental.macros
 
-import com.google.appengine.api.datastore.{Query => GQuery, FetchOptions, Cursor, Projection}
-import com.google.appengine.api.datastore.Query.{SortDirection, Filter}
 import macroimpls.QueryMacros
-import scalads.Datastore
+import scalads.AbstractDatastore
 import scalads.readers.{ObjectReader, Reader}
 
 /**
@@ -14,50 +12,33 @@ import scalads.readers.{ObjectReader, Reader}
  *         Created on 5/30/13
  */
 
-class Query[U](ds: Datastore, gQuery: GQuery, deserializer: (Datastore, ObjectReader) => U with EntityBacker[U]) { self =>
+trait AbstractQuery[U] { self =>
 
-  protected val fetchOptions = FetchOptions.Builder.withDefaults()
+}
 
+trait Query[U, E] { self =>
 
-  def limit(size: Int) = new Query[U](ds, gQuery, deserializer) {
-    override val fetchOptions = self.fetchOptions.limit(size)
-  }
+  def ds: AbstractDatastore
 
-  def withEndCursor(offset: String) = new Query[U](ds, gQuery, deserializer) {
-    override val fetchOptions = self.fetchOptions.endCursor(Cursor.fromWebSafeString(offset))
-  }
+  def deserializer: (AbstractDatastore, ObjectReader) => U with EntityBacker[U]
 
-  def withStartCursor(offset: String) = new Query[U](ds, gQuery, deserializer) {
-    override val fetchOptions = self.fetchOptions.startCursor(Cursor.fromWebSafeString(offset))
-  }
+  def limit(size: Int): this.type
 
-  def getIterator: QueryIterator[U with EntityBacker[U]] = new QueryIterator(runQuery, ds, deserializer)
+  def getIterator: QueryIterator[U with EntityBacker[U, E]] = new QueryIterator(runQuery, ds, deserializer)
 
-  def mapIterator[T](f: (Datastore, ObjectReader) => T): QueryIterator[T] = new QueryIterator(runQuery, ds, f)
+  def mapIterator[T](f: (AbstractDatastore[_], ObjectReader) => T): QueryIterator[T] = new QueryIterator(runQuery, ds, f)
 
   def mapIterator[T](f: ObjectReader => T): QueryIterator[T] = mapIterator( (_, r) => f(r) )
 
-  def runQuery = ds.ds.prepare(gQuery).asQueryResultIterator(fetchOptions)
+  def runQuery: ???
 
   def update(f: U => Option[U]) = ds.update(getIterator)(f)
 
-  def setFilter(filter: Filter): Query[U] = new Query[U](ds, gQuery.setFilter(filter), deserializer)
+  def setFilter(filter: Filter): this.type
 
-  def withParent(key: Key) = new Query[U](ds, gQuery.setAncestor(key), deserializer)
+  def sortBy(field: String, dir: SortDir): this.type
 
-  def withParent(parent: U with EntityBacker[U]): Query[U] = withParent(parent.ds_key)
-
-  def sortBy(field: String, dir: SortDirection) = new Query[U](ds, gQuery.addSort(field, dir), deserializer)
-
-  private var projections: List[String] = Nil
-
-  def addProjection(proj: Projection): self.type = {
-    if (!projections.contains(proj.getName)) {
-      projections = proj.getName::projections
-      gQuery.addProjection(proj)
-    }
-    self
-  }
+  def addProjection(proj: Projection): self.type
 
   // Macro impls
 

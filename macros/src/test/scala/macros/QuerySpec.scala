@@ -3,7 +3,7 @@ package macros
 import com.google.appengine.api.datastore.{Query => GQuery}
 import com.google.appengine.api.datastore.FetchOptions.Builder._
 import java.util.Date
-import scalads.Datastore
+import scalads.AbstractDatastore
 import scalads.core.{QueryIterator, EntityBacker}
 
 /**
@@ -12,7 +12,7 @@ import scalads.core.{QueryIterator, EntityBacker}
  */
 class QuerySpec extends GAESpecTemplate {
 
-  val ds = Datastore.getDatastoreService()
+  val ds = AbstractDatastore.getDatastoreService()
 
   def addTests = {
     0 until 10 foreach { i =>
@@ -127,7 +127,7 @@ class QuerySpec extends GAESpecTemplate {
     result._2 should equal(comp.in2.in)
   }
 
-  "Datastore" should "put java collections in the datastore" in {
+  "AbstractDatastore" should "put java collections in the datastore" in {
     import com.google.appengine.api.datastore.Entity
     import com.google.appengine.api.datastore.EmbeddedEntity
     import scala.collection.convert.WrapAsJava.asJavaCollection

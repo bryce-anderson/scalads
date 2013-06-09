@@ -1,37 +1,41 @@
 package scalads
 package core
 
-import com.google.appengine.api.datastore.{QueryResultIterator, Index}
 
-import scala.collection.JavaConverters._
-import scalads.readers.{GAEObjectReader, ObjectReader}
+import scalads.readers.ObjectReader
 
 /**
  * @author Bryce Anderson
  *         Created on 6/1/13
  */
 
-class QueryIterator[+A]
-    (it: QueryResultIterator[Entity],
-     ds: Datastore,
-     val deserializer: (Datastore, ObjectReader) => A) extends Iterator[A] {
+trait QueryIterator[+A, E]
+     extends Iterator[A] { self =>
 
-  def getCursor(): String = it.getCursor.toWebSafeString
+  def ds: AbstractDatastore[E]
 
-  def remove() = it.remove()
+  val deserializer: (AbstractDatastore[E], ObjectReader) => A
 
-  def indexList: List[Index] = it.getIndexList.asScala.toList
+  def nextEntity(): E
 
-  def nextEntity(): Entity = it.next()
+  private[scalads] def newReader(entity: E): ObjectReader
 
-  def nextWithEntity(): (Entity, A) = {
+  def nextWithEntity(): (E, A) = {
     val entity = nextEntity()
-    (entity, deserializer(ds, new GAEObjectReader(entity, "")))
+    (entity, deserializer(ds, newReader(entity)))
   }
 
-  override def map[B](f: A => B) = new QueryIterator[B](it, ds, (ds, e) => f(deserializer(ds, e)))
+  override def map[Z](f: (A) => Z): QueryIterator[Z,E] = new QueryIterator[Z,E] {
+    def hasNext = self.hasNext
 
-  override def hasNext(): Boolean = it.hasNext
+    def next() = f(self.next())
 
-  override def next(): A = deserializer(ds, new GAEObjectReader(nextEntity(), ""))
+    def ds = self.ds
+
+    val deserializer: (AbstractDatastore[E], ObjectReader) => Z = ((ds, r) => f(self.deserializer(ds, r)))
+
+    def nextEntity() = self.nextEntity()
+
+    private[scalads] def newReader(entity: E) = self.newReader(entity)
+  }
 }

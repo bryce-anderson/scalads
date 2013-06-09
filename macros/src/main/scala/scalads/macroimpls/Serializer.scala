@@ -8,42 +8,40 @@ import Utils._
 
 import macrohelpers.MacroHelpers
 
-import scalads.writers.{GAEWriter, Writer}
-
-import scalads.{Entity, Key}
+import scalads.writers.Writer
 import scalads.core.EntityBacker
 
 
 // Intended to be the serialization side of the class builder
 object Serializer {
 
-  def serializeObject[U: c.WeakTypeTag](c: Context)(obj: c.Expr[U], parent: c.Expr[Key]): c.Expr[Entity] = {
-    val helpers = new MacroHelpers[c.type](c)
-
-    import helpers.{classNameExpr}
-
-    import c.universe._
-    val tpe = weakTypeOf[U]
-    val name = classNameExpr(tpe)
-
-    val serializeExpr = serializeToEntityImpl[U](c)(obj, c.Expr[Entity](Ident(newTermName("e"))))
-
-    reify {
-      val e = new Entity(name.splice, parent.splice)
-      serializeExpr.splice
-      e
-    }
-  }
-
-  def serializeToEntity[U](obj: U, entity: Entity): Unit = macro serializeToEntityImpl[U]
-  def serializeToEntityImpl[U: c.WeakTypeTag](c: Context)(obj: c.Expr[U], entity: c.Expr[Entity]): c.Expr[Unit] = {
-    import c.universe._
-
-   reify{
-     val writer = new GAEWriter(entity.splice)
-     serializeImpl(c)(obj, c.Expr[GAEWriter](Ident(newTermName("writer")))).splice
-   }
-  }
+//  def serializeObject[U: c.WeakTypeTag](c: Context)(obj: c.Expr[U], parent: c.Expr[Key]): c.Expr[Entity] = {
+//    val helpers = new MacroHelpers[c.type](c)
+//
+//    import helpers.{classNameExpr}
+//
+//    import c.universe._
+//    val tpe = weakTypeOf[U]
+//    val name = classNameExpr(tpe)
+//
+//    val serializeExpr = serializeToEntityImpl[U](c)(obj, c.Expr[Entity](Ident(newTermName("e"))))
+//
+//    reify {
+//      val e = new Entity(name.splice, parent.splice)
+//      serializeExpr.splice
+//      e
+//    }
+//  }
+//
+//  def serializeToEntity[U](obj: U, entity: Entity): Unit = macro serializeToEntityImpl[U]
+//  def serializeToEntityImpl[U: c.WeakTypeTag](c: Context)(obj: c.Expr[U], entity: c.Expr[Entity]): c.Expr[Unit] = {
+//    import c.universe._
+//
+//   reify{
+//     val writer = new GAEWriter(entity.splice)
+//     serializeImpl(c)(obj, c.Expr[GAEWriter](Ident(newTermName("writer")))).splice
+//   }
+//  }
 
   /* ----------------- Macro Serializer ----------------- */
   def serialize[U](obj: U, writer: Writer[_]) = macro serializeImpl[U]
@@ -138,7 +136,7 @@ object Serializer {
 
     val tpe = weakTypeOf[U]
 
-    if(tpe <:< typeOf[EntityBacker[_]])
+    if(tpe <:< typeOf[EntityBacker[_,_]])
       c.error(c.enclosingPosition, s"Cannot directly serialize 'backed' entities. Type $tpe extends EntityBacker")
 
     val tree = if(tpe <:< typeOf[scala.collection.GenMap[_, _]]) {

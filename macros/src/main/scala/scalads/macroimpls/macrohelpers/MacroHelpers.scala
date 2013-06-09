@@ -22,6 +22,13 @@ class MacroHelpers[CTPE <: Context](val c: CTPE) {
     Literal(Constant(tpe.typeSymbol.fullName))
   }
 
+  def mkStringList(things: List[String]): c.Expr[List[String]] = {
+    things.foldLeft[c.Expr[List[String]]](reify(Nil)){ (a,b) =>
+      val expr = c.literal(b)
+      reify(expr.splice::a.splice)
+    }
+  }
+
   private lazy val primitiveTypes =  {
     c.typeOf[Int]::
       c.typeOf[String]::

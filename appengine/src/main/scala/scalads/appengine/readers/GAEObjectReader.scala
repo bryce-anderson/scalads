@@ -1,11 +1,12 @@
-package scalads.readers
+package scalads.appengine.readers
 
 import java.util.Date
-import com.google.appengine.api.datastore.{PropertyContainer, Text, ShortBlob, Blob}
+import com.google.appengine.api.datastore._
 
 
 import scala.collection.JavaConverters._
-import scalads.Entity
+import scalads.readers.{ArrayIterator, ObjectReader}
+import scala.Some
 
 /**
  * @author Bryce Anderson
@@ -16,7 +17,7 @@ object GAEObjectReader {
   def apply(entity: Entity) = new GAEObjectReader(entity, "")
 }
 
-class GAEObjectReader(val entity: PropertyContainer, prefix: String) extends ObjectReader { self =>
+class GAEObjectReader[+A <: PropertyContainer](val entity: A, prefix: String) extends ObjectReader[A] { self =>
 
   lazy val getKeys: Set[String] = entity.getProperties.keySet().asScala.toSet
 

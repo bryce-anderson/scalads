@@ -11,10 +11,7 @@ object Settings {
     scalaVersion := "2.10.1",
     scalacOptions ++= Seq(),
     libraryDependencies <+= scalaVersion("org.scala-lang" % "scala-reflect" % _),
-    libraryDependencies += ScalaTest % "test",
-    libraryDependencies += GoogleAppEngineTest % "test",
-    libraryDependencies += GoogleAppEngineStubs % "test",
-    libraryDependencies += GoogleAppEngineLabs % "test"
+    libraryDependencies += ScalaTest % "test"
   )
 }
 
@@ -27,6 +24,17 @@ object build extends Build {
       libraryDependencies += GoogleAppEngine
     )
   )
+  
+  lazy val appengine: Project = Project(
+    id = "ds-appengine",
+    base = file("appengine"),
+    settings = Settings.buildSettings ++ Seq(parallelExecution in Test := false) ++ Seq(
+      libraryDependencies += GoogleAppEngine,
+      libraryDependencies += GoogleAppEngineTest % "test",
+      libraryDependencies += GoogleAppEngineStubs % "test",
+      libraryDependencies += GoogleAppEngineLabs % "test"
+    )
+  ) dependsOn(macros)
   
 }
 

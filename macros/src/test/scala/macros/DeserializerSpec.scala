@@ -2,11 +2,11 @@ package macros
 
 import scalads.macroimpls
 import scalads.Entity
-import scalads.writers.GAEWriter
-import scalads.readers.GAEObjectReader
 
 import scalads.macroimpls.Deserializer.deserialize
 import java.util.Date
+import scalads.appengine.readers.GAEObjectReader
+import scalads.appengine.writers.GAEWriter
 
 /**
  * @author Bryce Anderson

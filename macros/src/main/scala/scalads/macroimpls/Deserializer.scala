@@ -3,19 +3,17 @@ package scalads.macroimpls
 import language.experimental.macros
 import scala.reflect.macros.Context
 import macrohelpers.MacroHelpers
-import scalads.readers.{ObjectReader, ArrayIterator, GAEObjectReader}
+import scalads.readers.{ObjectReader, ArrayIterator}
 import java.text.SimpleDateFormat
 import scalads.exceptions.MappingException
 
-import scalads.{Datastore, Entity}
-import scalads.core.EntityBacker
 
 
 object Deserializer {
 
   import java.util.Date
 
-  def deserialize[U](reader: GAEObjectReader): U = macro deserializeImpl[U]
+  def deserialize[U](reader: ObjectReader): U = macro deserializeImpl[U]
 
   def deserializeImpl[U: c.WeakTypeTag](c: Context)(reader: c.Expr[ObjectReader]): c.Expr[U] = {
 

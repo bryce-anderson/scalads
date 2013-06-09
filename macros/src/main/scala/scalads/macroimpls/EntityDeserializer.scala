@@ -3,8 +3,9 @@ package scalads.macroimpls
 import scalads.core.EntityBacker
 
 import scalads._
-import scalads.readers.{ObjectReader, GAEObjectReader}
+import scalads.readers.ObjectReader
 import scala.reflect.macros.Context
+import com.google.appengine.api.datastore.Entity
 
 
 /**
@@ -13,7 +14,7 @@ import scala.reflect.macros.Context
  */
 object EntityDeserializer {
 
-  def extendWithEntityBacker[U: c.WeakTypeTag](c: Context)(ds: c.Expr[Datastore], reader: c.Expr[ObjectReader]): c.Expr[U with EntityBacker[U]] = {
+  def extendWithEntityBacker[U: c.WeakTypeTag, Entity: c.WeakTypeTag](c: Context)(ds: c.Expr[AbstractDatastore[Entity]], reader: c.Expr[ObjectReader]): c.Expr[U with EntityBacker[U, Entity]] = {
     val helpers = new macrohelpers.MacroHelpers[c.type](c)
     import helpers.typeArgumentTree
 
@@ -42,12 +43,12 @@ object EntityDeserializer {
 
     val dsName = newTermName(c.fresh("datastore"))
     val dsExpr = c.Expr[ObjectReader](Ident(dsName))
-    val newDatastoreTree = ValDef(Modifiers(), dsName, TypeTree(typeOf[Datastore]), ds.tree)
+    val newDatastoreTree = ValDef(Modifiers(), dsName, TypeTree(typeOf[AbstractDatastore[Entity]]), ds.tree)
 
     val builderTree = macroimpls.Deserializer.deserializeImpl[U](c)(reader).tree
 
     val appliedTpeTree = typeArgumentTree(tpe)
-    val TypeRef(_, backerSym, _) = typeOf[EntityBacker[Any]]
+    val TypeRef(_, backerSym, _) = typeOf[EntityBacker[Any, Entity]]
 
     val (ctorTree: List[List[Tree]], readerTree) = buildObjParamExtract(builderTree)
 
@@ -68,8 +69,8 @@ object EntityDeserializer {
             )
           ),
           // TODO: This will need to be changed as not all datastores will use Entities...
-          ValDef(Modifiers(), newTermName("ds_backingEntity"), TypeTree(typeOf[Entity]), reify(readerExpr.splice.asInstanceOf[GAEObjectReader].entity.asInstanceOf[Entity]).tree): Tree,
-          ValDef(Modifiers(), newTermName("ds"), TypeTree(typeOf[Datastore]), dsExpr.tree),
+          ValDef(Modifiers(), newTermName("ds_backingEntity"), TypeTree(typeOf[Entity]), reify(readerExpr.splice.asInstanceOf[ObjectReader].entity.asInstanceOf[Entity]).tree): Tree,
+          ValDef(Modifiers(), newTermName("ds"), TypeTree(typeOf[AbstractDatastore]), dsExpr.tree),
           DefDef(Modifiers(), newTermName("ds_serialize"), Nil, List(
             ValDef(Modifiers(Flag.PARAM), newTermName("obj"), typeArgumentTree(tpe), EmptyTree)::
               ValDef(Modifiers(Flag.PARAM), newTermName("entity"), TypeTree(typeOf[Entity]), EmptyTree)::Nil

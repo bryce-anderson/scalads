@@ -1,6 +1,6 @@
 package macros
 
-import scalads.{Datastore, Entity}
+import scalads.{AbstractDatastore, Entity}
 
 /**
  * @author Bryce Anderson
@@ -8,7 +8,7 @@ import scalads.{Datastore, Entity}
  */
 class DatastoreSpec extends GAESpecTemplate {
 
-  val ds = Datastore.getDatastoreService()
+  val ds = AbstractDatastore.getDatastoreService()
 
   def addTests = {
     0 until 10 foreach { i =>
@@ -19,7 +19,7 @@ class DatastoreSpec extends GAESpecTemplate {
 
   case class Test(in: Int, in2: String)
 
-  "Datastore" should "perform transactions" in {
+  "AbstractDatastore" should "perform transactions" in {
     // Will fail
      try (ds.withTransaction {
        val test = Test(1, "two")
