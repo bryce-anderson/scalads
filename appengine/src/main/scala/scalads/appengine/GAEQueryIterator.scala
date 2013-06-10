@@ -12,8 +12,8 @@ import scalads.appengine.readers.GAEObjectReader
 import scalads.core.QueryIterator
 
 class GAEQueryIterator[+A](it: QueryResultIterator[GEntity],
-                          val ds: AbstractDatastore { type Entity = GEntity},
-                           val deserializer: (AbstractDatastore, ObjectReader) => A) extends QueryIterator[A, GEntity] {
+                          val ds: GAEDatastore,
+                           val deserializer: (AbstractDatastore[_, GEntity], ObjectReader) => A) extends QueryIterator[A, GEntity] {
 
   def hasNext: Boolean = it.hasNext
 

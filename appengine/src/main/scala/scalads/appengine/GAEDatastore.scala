@@ -20,9 +20,9 @@ import com.google.appengine.api.datastore.{Entity => GEntity, Key => GKey,
  * @author Bryce Anderson
  *         Created on 6/9/13
  */
-class GAEDatastore(val svc: DatastoreService) extends AbstractDatastore { self =>
-  type Key = GKey
+class GAEDatastore(val svc: DatastoreService) extends AbstractDatastore[GKey, GEntity] { self =>
   type Entity = GEntity
+  type Key = GKey
   type Repr = GAEDatastore
 
   def withTransaction[U](f: => U): U = {
@@ -49,12 +49,12 @@ class GAEDatastore(val svc: DatastoreService) extends AbstractDatastore { self =
     putEntity(writer.result)
   }
 
-  def mapQuery[U](tpe: String)(f: (GAEDatastore, ObjectReader) => U with EntityBacker[U, Entity]): GAEQuery[U] = {
+  def mapQuery[U](tpe: String)(f: (AbstractDatastore[_, Entity], ObjectReader) => U with EntityBacker[U, Entity]): GAEQuery[U] = {
 
     new GAEQuery[U](self, new GQuery(tpe), f)
   }
 
-  def query[U]: GAEQuery[U] = macro AbstractDatastore.queryImpl[U, Entity, GAEQuery[U], this.type]
+  def query[U]: GAEQuery[U] = macro AbstractDatastore.queryImpl[U, Entity, GAEQuery[U]]
 }
 
 object GAEDatastore {

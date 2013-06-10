@@ -9,9 +9,10 @@ import scalads.readers.ObjectReader
  *         Created on 6/1/13
  */
 
-trait QueryIterator[+A, E, DS <: AbstractDatastore { type Entity = E }]
+trait QueryIterator[+A, E]
      extends Iterator[A] { self =>
 
+  type DS = AbstractDatastore[_, E]
 
   def ds: DS
 
@@ -26,7 +27,7 @@ trait QueryIterator[+A, E, DS <: AbstractDatastore { type Entity = E }]
     (entity, deserializer(ds, ds.newReader(entity)))
   }
 
-  override def map[Z](f: (A) => Z): QueryIterator[Z,E,DS] = new QueryIterator[Z,E,DS] {
+  override def map[Z](f: (A) => Z): QueryIterator[Z,E] = new QueryIterator[Z,E] {
     def hasNext = self.hasNext
 
     def ds = self.ds
@@ -38,10 +39,10 @@ trait QueryIterator[+A, E, DS <: AbstractDatastore { type Entity = E }]
 }
 
 object QueryIterator {
-  def apply[A, E, DS <: AbstractDatastore{type Entity = E}](datastore: DS, it: Iterator[E], f: (DS, ObjectReader) => A) = new QueryIterator[A, E, DS] {
+  def apply[A, E](datastore: AbstractDatastore[_, E], it: Iterator[E], f: (AbstractDatastore[_, E], ObjectReader) => A) = new QueryIterator[A, E] {
     def hasNext: Boolean = it.hasNext
 
-    def ds: DS = datastore
+    def ds = datastore
 
     val deserializer: (DS, ObjectReader) => A = f
 

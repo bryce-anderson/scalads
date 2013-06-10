@@ -17,13 +17,7 @@ import scala.reflect.runtime.universe.TypeTag
  * @author Bryce Anderson
  *         Created on 5/31/13
  */
-trait AbstractDatastore { self =>
-
-  type Repr <: AbstractDatastore { type Entity = self.Entity }
-
-  type Key <: AnyRef
-
-  type Entity <: AnyRef
+trait AbstractDatastore[Key, Entity] { self =>
 
   def withTransaction[U](f: => U): U
 
@@ -31,7 +25,7 @@ trait AbstractDatastore { self =>
 
   def delete(entity: EntityBacker[_, Entity]):Unit = delete(entity.ds_entity)
 
-  def update[U](it: QueryIterator[U with EntityBacker[U, Entity], Entity, Repr])(f: U => Option[U]) {
+  def update[U](it: QueryIterator[U with EntityBacker[U, Entity], Entity])(f: U => Option[U]) {
     val newEntities = new ListBuffer[Entity]
     it.foreach { i =>
       f(i).foreach{ r =>
@@ -57,7 +51,7 @@ trait AbstractDatastore { self =>
 
   def put(parent: Key, f: Writer[Any] => Unit): Key     // Takes a method that will operate on the writer
 
-  def mapQuery[U](tpe: String)(f: (Repr, ObjectReader) => U with EntityBacker[U, Entity]): Query[U, Entity, Repr]
+  def mapQuery[U](tpe: String)(f: (AbstractDatastore[_, Entity], ObjectReader) => U with EntityBacker[U, Entity]): Query[U, Entity]
 
   //def query[U]: Query[U, Entity] = macro AbstractDatastore.queryImpl[U, Entity]
 
@@ -67,15 +61,15 @@ trait AbstractDatastore { self =>
 object AbstractDatastore {
   //def getDatastoreService() = new AbstractDatastore(DatastoreServiceFactory.getDatastoreService)
 
-  def queryImpl[U: c.WeakTypeTag, E: c.WeakTypeTag, Q <: Query[U, E, DS]: c.WeakTypeTag, DS <: AbstractDatastore {type Entity = E}: c.WeakTypeTag]
-  (c: Context { type PrefixType <: AbstractDatastore { type Entity = E } }): c.Expr[Q] = {
+  def queryImpl[U: c.WeakTypeTag, E: c.WeakTypeTag, Q <: Query[U, E]]
+  (c: Context { type PrefixType <: AbstractDatastore[_, E] }): c.Expr[Q] = {
 
     val helpers = new MacroHelpers[c.type](c)
     import c.universe._
 
     // val nameExpr = helpers.classNameExpr(weakTypeOf[U])
-    val deserializeExpr = macroimpls.EntityDeserializer.extendWithEntityBacker[U, E, DS](c)(
-      c.Expr[DS](Ident(newTermName("ds"))),
+    val deserializeExpr = macroimpls.EntityDeserializer.extendWithEntityBacker[U, E](c)(
+      c.Expr[AbstractDatastore[_, E]](Ident(newTermName("ds"))),
       c.Expr[ObjectReader](Ident(newTermName("reader")))
     )
     val typeID = c.literal(weakTypeOf[U].typeSymbol.fullName)
@@ -91,12 +85,12 @@ object AbstractDatastore {
 //  def putImplBacked[U: c.WeakTypeTag, E](c: Context {type PrefixType = AbstractDatastore})(obj: c.Expr[U], parent: c.Expr[EntityBacker[_, E]]): c.Expr[Key] =
 //    putImpl[U](c)(obj, c.universe.reify(parent.splice.ds_key))
 
-  def putImplNoKey[U: c.WeakTypeTag, K, E](c: Context {type PrefixType = AbstractDatastore { type Key = K; type Entity = E }})
+  def putImplNoKey[U: c.WeakTypeTag, K, E](c: Context {type PrefixType = AbstractDatastore[K, E] })
                                           (obj: c.Expr[U]): c.Expr[K] =
     putImpl[U, K, E](c)(obj, c.universe.reify(null).asInstanceOf[c.Expr[K]])
 
   def putImpl[U: c.WeakTypeTag, K, E](c: Context {
-    type PrefixType = AbstractDatastore { type Key = K; type Entity = E }
+    type PrefixType = AbstractDatastore [K, E]
   })(obj: c.Expr[U], parent: c.Expr[K]) = {
     import c.universe._
 

@@ -23,7 +23,7 @@ import scalads.core.SingleFilter
 
 class GAEQuery[U](val ds: GAEDatastore,
                         private var gQuery: GQuery,
-                        val deserializer: (GAEDatastore, ObjectReader) => U with EntityBacker[U, GEntity])
+                        val deserializer: (AbstractDatastore[_, GEntity], ObjectReader) => U with EntityBacker[U, GEntity])
             extends Query[U, GEntity] { self =>
 
   private var fetchOptions = FetchOptions.Builder.withDefaults()
