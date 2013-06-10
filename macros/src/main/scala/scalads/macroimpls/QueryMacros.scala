@@ -31,7 +31,7 @@ object QueryMacros {
     findName(tree, Nil)
   }
 
-  def project[U: c.WeakTypeTag, R](c: Context { type PrefixType = Query[U, _]})(f: c.Expr[U => R]): c.Expr[QueryIterator[R, _]] = {
+  def project[U: c.WeakTypeTag, R, E](c: Context { type PrefixType = Query[U, E]})(f: c.Expr[U => R]): c.Expr[QueryIterator[R, E]] = {
     val helpers = new macrohelpers.MacroHelpers[c.type](c)
     import helpers.mkStringList
 

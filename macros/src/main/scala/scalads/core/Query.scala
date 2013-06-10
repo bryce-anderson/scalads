@@ -51,7 +51,7 @@ trait Query[U, E] { self =>
 
   // Macro impls
 
-  def project[R](f: U => R): QueryIterator[R, _] =     macro QueryMacros.project[U, R]
+  def project[R](f: U => R): QueryIterator[R, E] =     macro QueryMacros.project[U, R, E]
 
   def sortAsc(f: U => Any) =                           macro QueryMacros.sortImplAsc[U]
 
