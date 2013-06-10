@@ -84,8 +84,7 @@ object EntityDeserializer {
 
     val result = c.Expr[U with EntityBacker[U, E]](  Block(newReaderTree::newDatastoreTree::Nil, newTree) )
 
+    //println(result)
     result
-
   }
-
 }

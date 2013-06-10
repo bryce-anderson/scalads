@@ -57,6 +57,6 @@ trait Query[U, E] { self =>
 
   def sortDec(f: U => Any) =                           macro QueryMacros.sortImplDesc[U]
 
-  def filter(f: U => Boolean) =                        macro QueryMacros.filterImpl[U]
+  def filter(f: U => Boolean)  =                       macro QueryMacros.filterImpl[U]
 }
 

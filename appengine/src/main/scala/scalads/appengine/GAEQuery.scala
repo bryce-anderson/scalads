@@ -44,7 +44,11 @@ class GAEQuery[U](val ds: GAEDatastore,
     self
   }
 
-  def runQuery = ds.svc.prepare(gQuery).asQueryResultIterator(fetchOptions).asScala
+  def runQuery = {
+    val result = ds.svc.prepare(gQuery).asQueryResultIterator(fetchOptions).asScala
+    println(s"Result: $result")
+    result
+  }
 
   def setFilter(filter: Filter): this.type = {
 

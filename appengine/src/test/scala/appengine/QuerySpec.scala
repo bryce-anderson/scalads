@@ -1,10 +1,8 @@
 package appengine
 
-import appengine.GAESpecTemplate
 import com.google.appengine.api.datastore.{Query => GQuery, Entity}
 import com.google.appengine.api.datastore.FetchOptions.Builder._
 import java.util.Date
-import scalads.AbstractDatastore
 import scalads.core.{QueryIterator, EntityBacker}
 import scalads.appengine.GAEDatastore
 
@@ -27,7 +25,7 @@ class QuerySpec extends GAESpecTemplate {
   case class Compound(in: Int, in2: Test)
   case class Types(in1: Int, in2: Long, in3: Float, in4: Double, in5: String, in6: Date)
 
-  "Query" should "work" in {
+  "Query" should "do filters" in {
     val query = ds.query[Test]
         .filter{ bryce => bryce.in2 > "sweet"
     }
@@ -128,7 +126,7 @@ class QuerySpec extends GAESpecTemplate {
     result._2 should equal(comp.in2.in)
   }
 
-//  "AbstractDatastore" should "put java collections in the datastore" in {
+//  "Datastore" should "put java collections in the datastore" in {
 //    import com.google.appengine.api.datastore.Entity
 //    import com.google.appengine.api.datastore.EmbeddedEntity
 //    import scala.collection.convert.WrapAsJava.asJavaCollection
