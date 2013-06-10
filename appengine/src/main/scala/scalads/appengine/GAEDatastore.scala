@@ -2,7 +2,6 @@ package scalads.appengine
 
 import scala.reflect.macros.Context
 import scala.language.experimental.macros
-import scala.reflect.runtime.universe.{TypeTag, typeTag}
 
 import scala.collection.JavaConverters._
 
@@ -24,6 +23,8 @@ class GAEDatastore(val svc: DatastoreService) extends AbstractDatastore[GKey, GE
   type Entity = GEntity
   type Key = GKey
   type Repr = GAEDatastore
+
+  type QueryType[U] = GAEQuery[U]
 
   def withTransaction[U](f: => U): U = {
     val txn = svc.beginTransaction()
@@ -54,7 +55,7 @@ class GAEDatastore(val svc: DatastoreService) extends AbstractDatastore[GKey, GE
     new GAEQuery[U](self, new GQuery(tpe), f)
   }
 
-  def query[U]: GAEQuery[U] = macro AbstractDatastore.queryImpl[U, Entity, GAEQuery[U]]
+  //def query[U]: GAEQuery[U] = macro AbstractDatastore.queryImpl[U, Entity, GAEQuery[U]]
 }
 
 object GAEDatastore {

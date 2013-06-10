@@ -19,6 +19,8 @@ import scala.reflect.runtime.universe.TypeTag
  */
 trait AbstractDatastore[Key, Entity] { self =>
 
+  type QueryType[U] <: Query[U, Entity]
+
   def withTransaction[U](f: => U): U
 
   def delete(entity: Entity): Unit
@@ -55,6 +57,8 @@ trait AbstractDatastore[Key, Entity] { self =>
 
   //def query[U]: Query[U, Entity] = macro AbstractDatastore.queryImpl[U, Entity]
 
+  def query[U]: QueryType[U] = macro AbstractDatastore.queryImpl[U, Entity, QueryType[U]]
+
   def put[U](obj: U): Key = macro AbstractDatastore.putImplNoKey[U, Key, Entity]
 }
 
@@ -81,9 +85,6 @@ object AbstractDatastore {
     println(result)
     result.asInstanceOf[c.Expr[Q]]
   }
-
-//  def putImplBacked[U: c.WeakTypeTag, E](c: Context {type PrefixType = AbstractDatastore})(obj: c.Expr[U], parent: c.Expr[EntityBacker[_, E]]): c.Expr[Key] =
-//    putImpl[U](c)(obj, c.universe.reify(parent.splice.ds_key))
 
   def putImplNoKey[U: c.WeakTypeTag, K, E](c: Context {type PrefixType = AbstractDatastore[K, E] })
                                           (obj: c.Expr[U]): c.Expr[K] =
