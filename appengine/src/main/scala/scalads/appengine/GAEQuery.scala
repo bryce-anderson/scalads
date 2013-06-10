@@ -80,12 +80,19 @@ class GAEQuery[U](val ds: GAEDatastore,
   def addProjection(proj: Projection): this.type = {
     if (!projections.contains(proj)) {
       projections = proj::projections
-      gQuery = gQuery.addProjection(new PropertyProjection(proj.path.mkString("."), proj.clazz.getOrElse(null)))
+      gQuery = gQuery.addProjection(new PropertyProjection(proj.path.mkString("."), null))
     }
     self
   }
 
-  def sortBy(field: String, dir: _root_.scalads.core.SortDir): this.type = ???
+  def sortBy(field: String, dir: SortDir): this.type = {
+    import core.{SortDirection => SDir}
+    gQuery = gQuery.addSort(field, dir match {
+      case SDir.asc => SortDirection.ASCENDING
+      case SDir.desc => SortDirection.DESCENDING
+    })
+    self
+  }
 }
 
 

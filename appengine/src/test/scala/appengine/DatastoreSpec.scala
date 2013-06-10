@@ -23,7 +23,7 @@ class DatastoreSpec extends GAESpecTemplate {
 
   case class Test(in: Int, in2: String)
 
-  "AbstractDatastore" should "perform transactions" in {
+  "GAEDatastore" should "perform transactions" in {
     // Will fail
      try (ds.withTransaction {
        val test = Test(1, "two")

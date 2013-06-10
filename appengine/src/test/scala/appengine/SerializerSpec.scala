@@ -18,7 +18,7 @@ import scalads.appengine.GAEDatastore
  *         Created on 5/27/13
  */
 
-class SerializerSpec extends FlatSpec with BeforeAndAfter with ShouldMatchers {
+class SerializerSpec extends GAESpecTemplate {
 
   case class Simple(in: Int, in2: String)
 

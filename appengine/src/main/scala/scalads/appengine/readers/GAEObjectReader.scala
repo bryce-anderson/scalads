@@ -1,10 +1,11 @@
 package scalads.appengine.readers
 
 import java.util.Date
-import com.google.appengine.api.datastore._
+import com.google.appengine.api.datastore.{Entity, RawValue, PropertyContainer, Text, Blob, ShortBlob}
 
 
 import scala.collection.JavaConverters._
+
 import scalads.readers.{ArrayIterator, ObjectReader}
 import scala.Some
 
@@ -28,35 +29,39 @@ class GAEObjectReader(val entity: PropertyContainer, prefix: String) extends Obj
   // Option forms
   def optObjectReader(key: String): Option[GAEObjectReader] = Some(new GAEObjectReader(entity, fullPrefix + key))
 
-  override def getObjectReader(key: String): GAEObjectReader =
-    optObjectReader(key).getOrElse(failStructure(s"Cannot find reader with key $key", self))
-
   def optArrayReader(key: String): Option[ArrayIterator] = Option(entity.getProperty(fullPrefix + key)).flatMap(_ match {
     case lst: java.util.List[Any] => Some(new GAEArrayIterator(lst.iterator()))
+    case r: RawValue => try {
+      Some(new GAEArrayIterator(r.asStrictType(classOf[java.util.List[Any]]).iterator()))
+    } catch { case _: Throwable => None }
     case e => None
   })
 
   def optInt(key: String): Option[Int] = Option(entity.getProperty(fullPrefix + key)).flatMap (_ match {
     case i: java.lang.Integer =>  Some(i.intValue())
     case i: java.lang.Long => Some(i.intValue())
+    case r: RawValue => try { Some(r.asStrictType(classOf[java.lang.Long]).intValue()) } catch { case _: Throwable => None }
     case _ => None
   })
 
   def optLong(key: String): Option[Long] = Option(entity.getProperty(fullPrefix + key)).flatMap (_ match {
     case i: Integer =>  Some(i.longValue())
     case i: java.lang.Long => Some(i.longValue())
+    case r: RawValue => try { Some(r.asStrictType(classOf[java.lang.Long]).longValue()) } catch { case _: Throwable => None }
     case _ => None
   })
 
   def optFloat(key: String): Option[Float] = Option(entity.getProperty(fullPrefix + key)).flatMap (_ match {
     case i: java.lang.Double =>   Some(i.floatValue())
     case i: java.lang.Float => Some(i.floatValue())
+    case r: RawValue => try { Some(r.asStrictType(classOf[java.lang.Double]).floatValue()) } catch { case _: Throwable => None }
     case _ => None
   })
 
   def optDouble(key: String): Option[Double] = Option(entity.getProperty(fullPrefix + key)).flatMap (_ match {
     case i: java.lang.Double =>   Some(i.doubleValue())
     case i: java.lang.Float => Some(i.doubleValue())
+    case r: RawValue => try { Some(r.asStrictType(classOf[java.lang.Double]).doubleValue()) } catch { case _: Throwable => None }
     case _ => None
   })
 
@@ -66,22 +71,37 @@ class GAEObjectReader(val entity: PropertyContainer, prefix: String) extends Obj
 
   def optBool(key: String): Option[Boolean] =  Option(entity.getProperty(fullPrefix + key)).flatMap (_ match {
     case i: java.lang.Boolean => Some(i.booleanValue())
+    case r: RawValue => try { Some(r.asStrictType(classOf[java.lang.Boolean]).booleanValue()) } catch { case _: Throwable => None }
     case _ => None
   })
 
   def optString(key: String): Option[String] =  Option(entity.getProperty(fullPrefix + key)).flatMap (_ match {
     case i: String => Some(i)
     case s: Text =>   Some(s.getValue)
-    case _ => None
+    case r: RawValue => try { Some(r.asStrictType(classOf[String])) } catch { case _: Throwable => None }
+    case e => None
   })
+//
+//
+//  override def getString(key: String): String = {
+//    optString(key).getOrElse {
+//
+//      sys.error(s"String Not found: ${fullPrefix +key}. ${self.getKeys}\n${self.entity.getProperty("in5")}")
+//    }
+//  }
 
   def optDate(key: String): Option[Date] =  Option(entity.getProperty(fullPrefix + key)).flatMap (_ match {
     case i: Date => Some(i)
+    case r: RawValue => try { Some(r.asStrictType(classOf[Date])) } catch { case _: Throwable => None }
     case _ => None
   })
 
   def optBytes(key: String): Option[Array[Byte]] = Option(entity.getProperty(fullPrefix + key)).flatMap(_ match {
     case i: ShortBlob => Some(i.getBytes)
     case i: Blob      => Some(i.getBytes)
+      // TODO: need to check both types
+    case r: RawValue => try { Some(r.asStrictType(classOf[Blob]).getBytes) } catch { case _: Throwable => None }
+    case _ => None
+
   })
 }

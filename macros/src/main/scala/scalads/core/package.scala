@@ -12,12 +12,7 @@ package object core {
   type FilterOp = Operation.Operation
   type SortDir = SortDirection.SortDirection
 
-  case class Projection(path: List[String], clazz: Option[Class[_]] = None) { self =>
-    override def equals(other: Any) = other match {
-      case Projection(path, clazz) if path == self.path && clazz.equals(self.clazz) => true
-      case _ => false
-    }
-  }
+  case class Projection(path: List[String])
 
   object SortDirection extends Enumeration {
     type SortDirection = Value

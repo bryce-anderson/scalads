@@ -43,8 +43,8 @@ class GAEDatastore(val svc: DatastoreService) extends AbstractDatastore[GKey, GE
 
   def putEntity(entity: Entity): Key = svc.put(entity)
 
-  def put(parent: Key, f: (Writer[Any]) => Unit): Key = {
-    val writer = new GAEWriter(new Entity(null, parent))
+  def putRaw(tpe: String, parent: Key, f: (Writer[Any]) => Unit): Key = {
+    val writer = new GAEWriter(new Entity(tpe, parent))
     f(writer)
     putEntity(writer.result)
   }
@@ -66,8 +66,9 @@ object GAEDatastore {
 
 
     val deserializer = serializeImpl(c)(obj, c.Expr[Writer[GEntity]](Ident(newTermName("writer"))))
+    val nameExpr = c.literal(weakTypeOf[U].typeSymbol.fullName)
     reify {
-      c.prefix.splice.put(key.splice, writer => deserializer.splice)
+      c.prefix.splice.putRaw(nameExpr.splice, key.splice, writer => deserializer.splice)
     }
   }
 }

@@ -128,20 +128,20 @@ class QuerySpec extends GAESpecTemplate {
     result._2 should equal(comp.in2.in)
   }
 
-  "AbstractDatastore" should "put java collections in the datastore" in {
-    import com.google.appengine.api.datastore.Entity
-    import com.google.appengine.api.datastore.EmbeddedEntity
-    import scala.collection.convert.WrapAsJava.asJavaCollection
-
-    val emb = new EmbeddedEntity()
-    emb.setProperty("cool", 5)
-
-    val a = asJavaCollection(emb::1::"cat"::Nil)  // This is serializable
-
-    val e = new Entity("test")
-    e.setProperty("lst", a)
-
-    val lst = e.getProperty("lst").asInstanceOf[java.util.Collection[Any]]
-    lst.iterator().next().asInstanceOf[EmbeddedEntity].getProperty("cool") should equal (5)
-  }
+//  "AbstractDatastore" should "put java collections in the datastore" in {
+//    import com.google.appengine.api.datastore.Entity
+//    import com.google.appengine.api.datastore.EmbeddedEntity
+//    import scala.collection.convert.WrapAsJava.asJavaCollection
+//
+//    val emb = new EmbeddedEntity()
+//    emb.setProperty("cool", 5)
+//
+//    val a = asJavaCollection(emb::1::"cat"::Nil)  // This is serializable
+//
+//    val e = new Entity("test")
+//    e.setProperty("lst", a)
+//
+//    val lst = e.getProperty("lst").asInstanceOf[java.util.Collection[Any]]
+//    lst.iterator().next().asInstanceOf[EmbeddedEntity].getProperty("cool") should equal (5)
+//  }
 }

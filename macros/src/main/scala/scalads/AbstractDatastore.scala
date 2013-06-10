@@ -49,7 +49,7 @@ trait AbstractDatastore[Key, Entity] { self =>
 
   def putEntity(entity: Entity): Key
 
-  def put(parent: Key, f: Writer[Any] => Unit): Key     // Takes a method that will operate on the writer
+  def putRaw(tpe: String, parent: Key, f: Writer[Any] => Unit): Key     // Takes a method that will operate on the writer
 
   def mapQuery[U](tpe: String)(f: (AbstractDatastore[_, Entity], ObjectReader) => U with EntityBacker[U, Entity]): Query[U, Entity]
 
@@ -89,15 +89,15 @@ object AbstractDatastore {
                                           (obj: c.Expr[U]): c.Expr[K] =
     putImpl[U, K, E](c)(obj, c.universe.reify(null).asInstanceOf[c.Expr[K]])
 
-  def putImpl[U: c.WeakTypeTag, K, E](c: Context {
-    type PrefixType = AbstractDatastore [K, E]
-  })(obj: c.Expr[U], parent: c.Expr[K]) = {
+  def putImpl[U: c.WeakTypeTag, K, E](c: Context { type PrefixType = AbstractDatastore [K, E]})
+                                     (obj: c.Expr[U], parent: c.Expr[K]) = {
     import c.universe._
 
     val serializeExpr = Serializer.serializeImpl[U](c)(obj, c.Expr[Writer[Any]](Ident(newTermName("writer"))))
+    val tpeExpr = c.literal(weakTypeOf[U].typeSymbol.fullName)
 
     reify(
-      c.prefix.splice.put( parent.splice, { writer: Writer[Any] => serializeExpr.splice })
+      c.prefix.splice.putRaw(tpeExpr.splice, parent.splice, { writer: Writer[Any] => serializeExpr.splice })
     )
   }
 }
