@@ -17,7 +17,9 @@ object GAEObjectReader {
   def apply(entity: Entity) = new GAEObjectReader(entity, "")
 }
 
-class GAEObjectReader[+A <: PropertyContainer](val entity: A, prefix: String) extends ObjectReader[A] { self =>
+class GAEObjectReader(val entity: PropertyContainer, prefix: String) extends ObjectReader { self =>
+
+  type Entity = PropertyContainer
 
   lazy val getKeys: Set[String] = entity.getProperties.keySet().asScala.toSet
 

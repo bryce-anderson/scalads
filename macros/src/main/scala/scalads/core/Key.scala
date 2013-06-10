@@ -6,4 +6,3 @@ package scalads.core
  */
 
 // A punt for now
-case class Key[A](id: Long, raw: A)

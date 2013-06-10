@@ -1,12 +1,13 @@
-package macros
+package appengine
 
 import scalads.macroimpls
-import scalads.Entity
 
 import scalads.macroimpls.Deserializer.deserialize
 import java.util.Date
 import scalads.appengine.readers.GAEObjectReader
 import scalads.appengine.writers.GAEWriter
+
+import com.google.appengine.api.datastore.Entity
 
 /**
  * @author Bryce Anderson
@@ -24,7 +25,7 @@ class DeserializerSpec extends GAESpecTemplate {
   case class Types(int: Int, float: Float, string: String, date: Date, symbol: Symbol, bytes: Array[Byte])
 
   "Deserializer" should "extract a simple entity" in {
-    val writer = new GAEWriter(new Entity("macros.DeserializerSpec.Simple"))
+    val writer = new GAEWriter(new Entity("appengine.DeserializerSpec.Simple"))
     macroimpls.Serializer.serialize(mySimple, writer)
     val entity = writer.result
 
@@ -38,7 +39,7 @@ class DeserializerSpec extends GAESpecTemplate {
   it should "handle all types" in {
     val date = new Date()
     val types = Types(1, 1f, "one", date, 'one, "one".getBytes())
-    val writer = new GAEWriter(new Entity("macros.DeserializerSpec.Types"))
+    val writer = new GAEWriter(new Entity("appengine.DeserializerSpec.Types"))
     macroimpls.Serializer.serialize(types, writer)
 
     val entity = writer.result
@@ -57,7 +58,7 @@ class DeserializerSpec extends GAESpecTemplate {
   }
 
   it should "Work with compound objects" in {
-    val writer = new GAEWriter(new Entity("macros.DeserializerSpec.Compound"))
+    val writer = new GAEWriter(new Entity("appengine.DeserializerSpec.Compound"))
     macroimpls.Serializer.serialize(myCompound, writer)
     val entity = writer.result
 
@@ -69,7 +70,7 @@ class DeserializerSpec extends GAESpecTemplate {
   }
 
   it should "work with three fold deap objects" in {
-    val writer = new GAEWriter(new Entity("macros.DeserializerSpec.Three"))
+    val writer = new GAEWriter(new Entity("appengine.DeserializerSpec.Three"))
     macroimpls.Serializer.serialize(three, writer)
     val entity = writer.result
 
@@ -84,7 +85,7 @@ class DeserializerSpec extends GAESpecTemplate {
 
     case class Test[A](in: A)
     val three = Test(1)
-    val writer = new GAEWriter(new Entity("macros.DeserializerSpec.Test[Int]"))
+    val writer = new GAEWriter(new Entity("appengine.DeserializerSpec.Test[Int]"))
     macroimpls.Serializer.serialize(three, writer)
     val entity = writer.result
 
@@ -96,7 +97,7 @@ class DeserializerSpec extends GAESpecTemplate {
   }
 
   it should "generate similar classes" in {
-    val writer = new GAEWriter(new Entity("macros.DeserializerSpec.Simple"))
+    val writer = new GAEWriter(new Entity("appengine.DeserializerSpec.Simple"))
     macroimpls.Serializer.serialize(mySimple, writer)
     val entity = writer.result
 

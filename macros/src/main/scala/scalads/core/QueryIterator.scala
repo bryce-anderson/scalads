@@ -9,33 +9,42 @@ import scalads.readers.ObjectReader
  *         Created on 6/1/13
  */
 
-trait QueryIterator[+A, E]
+trait QueryIterator[+A, E, DS <: AbstractDatastore { type Entity = E }]
      extends Iterator[A] { self =>
 
-  def ds: AbstractDatastore[E]
 
-  val deserializer: (AbstractDatastore[E], ObjectReader) => A
+  def ds: DS
+
+  val deserializer: (DS, ObjectReader) => A
 
   def nextEntity(): E
 
-  private[scalads] def newReader(entity: E): ObjectReader
+  def next(): A = deserializer(ds, ds.newReader(nextEntity()))
 
   def nextWithEntity(): (E, A) = {
     val entity = nextEntity()
-    (entity, deserializer(ds, newReader(entity)))
+    (entity, deserializer(ds, ds.newReader(entity)))
   }
 
-  override def map[Z](f: (A) => Z): QueryIterator[Z,E] = new QueryIterator[Z,E] {
+  override def map[Z](f: (A) => Z): QueryIterator[Z,E,DS] = new QueryIterator[Z,E,DS] {
     def hasNext = self.hasNext
-
-    def next() = f(self.next())
 
     def ds = self.ds
 
-    val deserializer: (AbstractDatastore[E], ObjectReader) => Z = ((ds, r) => f(self.deserializer(ds, r)))
+    val deserializer: (DS, ObjectReader) => Z = ((ds, r) => f(self.deserializer(ds, r)))
 
     def nextEntity() = self.nextEntity()
+  }
+}
 
-    private[scalads] def newReader(entity: E) = self.newReader(entity)
+object QueryIterator {
+  def apply[A, E, DS <: AbstractDatastore{type Entity = E}](datastore: DS, it: Iterator[E], f: (DS, ObjectReader) => A) = new QueryIterator[A, E, DS] {
+    def hasNext: Boolean = it.hasNext
+
+    def ds: DS = datastore
+
+    val deserializer: (DS, ObjectReader) => A = f
+
+    def nextEntity(): E = it.next()
   }
 }

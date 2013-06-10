@@ -1,4 +1,4 @@
-package macros
+package appengine
 
 import org.scalatest._
 import com.google.appengine.tools.development.testing.{LocalDatastoreServiceTestConfig, LocalServiceTestHelper}

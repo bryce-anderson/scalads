@@ -1,10 +1,12 @@
-package macros
+package appengine
 
+import appengine.GAESpecTemplate
 import com.google.appengine.api.datastore.{Query => GQuery}
 import com.google.appengine.api.datastore.FetchOptions.Builder._
 import java.util.Date
 import scalads.AbstractDatastore
 import scalads.core.{QueryIterator, EntityBacker}
+import scalads.appengine.GAEDatastore
 
 /**
  * @author Bryce Anderson
@@ -12,7 +14,7 @@ import scalads.core.{QueryIterator, EntityBacker}
  */
 class QuerySpec extends GAESpecTemplate {
 
-  val ds = AbstractDatastore.getDatastoreService()
+  val ds = GAEDatastore.getDatastoreService()
 
   def addTests = {
     0 until 10 foreach { i =>
@@ -59,7 +61,7 @@ class QuerySpec extends GAESpecTemplate {
 
     addTests
 
-    ds.ds.prepare(new GQuery("macros.QuerySpec.Test")).countEntities(withLimit(100)) should equal (10)
+    ds.svc.prepare(new GQuery("appengine.QuerySpec.Test")).countEntities(withLimit(100)) should equal (10)
 
     val results = ds.query[Test]
       .filter(_.in > 0)

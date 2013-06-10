@@ -8,7 +8,7 @@ import java.util.Date
  */
 
 // Writers are stateful
-trait Writer[T] {
+trait Writer[+T] {
   def result: T
 
   def startArray()

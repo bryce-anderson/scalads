@@ -1,14 +1,18 @@
-package macros
+package appengine
 
-import scalads.{AbstractDatastore, Entity}
+import scalads.appengine.GAEDatastore
+import com.google.appengine.api.datastore.Entity
 
 /**
  * @author Bryce Anderson
  *         Created on 6/2/13
  */
+
+import scalads._
+
 class DatastoreSpec extends GAESpecTemplate {
 
-  val ds = AbstractDatastore.getDatastoreService()
+  val ds = GAEDatastore.getDatastoreService()
 
   def addTests = {
     0 until 10 foreach { i =>
@@ -44,8 +48,9 @@ class DatastoreSpec extends GAESpecTemplate {
     val t1 = new Entity("Junk")
     val t2 = Test(1, "key")
     val t3 = Test(2, "key")
-    val parent = ds.put(t1)
-    ds.put(t2, parent)
+    val parent = ds.putEntity(t1)
+
+    ds.putWithParent(t2, parent)
     ds.put(t3)
 
     ds.query[Test].withParent(parent)

@@ -31,7 +31,7 @@ object QueryMacros {
     findName(tree, Nil)
   }
 
-  def project[U: c.WeakTypeTag, R, E](c: Context { type PrefixType = Query[U]})(f: c.Expr[U => R]): c.Expr[QueryIterator[R, E]] = {
+  def project[U: c.WeakTypeTag, R](c: Context { type PrefixType = Query[U, _, _]})(f: c.Expr[U => R]): c.Expr[QueryIterator[R, _, _]] = {
     val helpers = new macrohelpers.MacroHelpers[c.type](c)
     import helpers.mkStringList
 
@@ -112,7 +112,7 @@ object QueryMacros {
     result
   }
 
-  def sortImplGeneric[U: c.WeakTypeTag](c: Context {type PrefixType = Query[U]})(f: c.Expr[U => Any], dir: c.Expr[SortDir]): c.prefix.type = {
+  def sortImplGeneric[U: c.WeakTypeTag](c: Context {type PrefixType = Query[U, _, _]})(f: c.Expr[U => Any], dir: c.Expr[SortDir]) = {
     import c.universe._
 
     val Function(List(ValDef(_, name, _, _)), body) = f.tree
@@ -124,17 +124,17 @@ object QueryMacros {
     result
   }
 
-  def sortImplAsc[U: c.WeakTypeTag](c: Context {type PrefixType = Query[U]})(f: c.Expr[U => Any]): c.prefix.type = {
+  def sortImplAsc[U: c.WeakTypeTag](c: Context {type PrefixType = Query[U, _, _]})(f: c.Expr[U => Any]) = {
     import c.universe._
     sortImplGeneric(c)(f, reify(SortDirection.asc))
   }
 
-  def sortImplDesc[U: c.WeakTypeTag](c: Context {type PrefixType = Query[U]})(f: c.Expr[U => Any]): c.prefix.type = {
+  def sortImplDesc[U: c.WeakTypeTag](c: Context {type PrefixType = Query[U, _, _]})(f: c.Expr[U => Any]) = {
     import c.universe._
     sortImplGeneric(c)(f, reify(SortDirection.desc))
   }
 
-  def filterImpl[U: c.WeakTypeTag](c: Context {type PrefixType = Query[U]})(f: c.Expr[U => Boolean]): c.prefix.type = {
+  def filterImpl[U: c.WeakTypeTag](c: Context {type PrefixType = Query[U, _, _]})(f: c.Expr[U => Boolean]) = {
     val helpers = new macrohelpers.MacroHelpers[c.type](c)
     import helpers.mkStringList
 

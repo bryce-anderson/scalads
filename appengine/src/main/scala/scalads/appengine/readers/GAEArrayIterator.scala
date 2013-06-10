@@ -9,7 +9,10 @@ import scalads.readers.{ObjectReader, ArrayIterator}
  * @author Bryce Anderson
  *         Created on 6/7/13
  */
-class GAEArrayIterator(val entity: JIterator[Any]) extends ArrayIterator[JIterator[Any]] { self =>
+class GAEArrayIterator(val entity: JIterator[Any]) extends ArrayIterator { self =>
+
+  type Entity = JIterator[Any]
+
   // Option forms
   def nextObjectReader: ObjectReader = entity.next() match {
     case p: PropertyContainer => new GAEObjectReader(p, "")

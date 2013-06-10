@@ -12,27 +12,9 @@ import scalads.readers.{ObjectReader, Reader}
  *         Created on 5/30/13
  */
 
-trait AbstractQuery[U] { self =>
+trait Query[U, E, DS <: AbstractDatastore { type Entity = E }] { self =>
 
-}
-
-trait Query[U, E] { self =>
-
-  def ds: AbstractDatastore
-
-  def deserializer: (AbstractDatastore, ObjectReader) => U with EntityBacker[U]
-
-  def limit(size: Int): this.type
-
-  def getIterator: QueryIterator[U with EntityBacker[U, E]] = new QueryIterator(runQuery, ds, deserializer)
-
-  def mapIterator[T](f: (AbstractDatastore[_], ObjectReader) => T): QueryIterator[T] = new QueryIterator(runQuery, ds, f)
-
-  def mapIterator[T](f: ObjectReader => T): QueryIterator[T] = mapIterator( (_, r) => f(r) )
-
-  def runQuery: ???
-
-  def update(f: U => Option[U]) = ds.update(getIterator)(f)
+  def ds: DS
 
   def setFilter(filter: Filter): this.type
 
@@ -40,14 +22,39 @@ trait Query[U, E] { self =>
 
   def addProjection(proj: Projection): self.type
 
+  def runQuery: Iterator[E]
+
+  def deserializer: (DS, ObjectReader) => U with EntityBacker[U, E]
+
+  def limit(size: Int): this.type
+
+  def getIterator: QueryIterator[U with EntityBacker[U, E], E, DS] = QueryIterator(ds, runQuery, deserializer)
+
+  def mapIterator[T](f: (DS, ObjectReader) => T): QueryIterator[T, E, DS] = {
+
+    val it = runQuery
+
+    new QueryIterator[T, E, DS]{
+      def hasNext: Boolean = it.hasNext
+      val ds: DS = self.ds
+      val deserializer: (DS, ObjectReader) => T = f
+      def nextEntity(): E = it.next()
+    }
+  }
+
+  def mapIterator[T](f: ObjectReader => T): QueryIterator[T, E, DS] = mapIterator( (_, r) => f(r) )
+
+  //def update(f: U => Option[U]) = ds.update(getIterator)(f)
+
+
   // Macro impls
 
-  def project[R](f: U => R): QueryIterator[R] =     macro QueryMacros.project[U, R]
+  def project[R](f: U => R): QueryIterator[R, _, _] =     macro QueryMacros.project[U, R]
 
-  def sortAsc(f: U => Any): Query[U] =            macro QueryMacros.sortImplAsc[U]
+  def sortAsc(f: U => Any) =                           macro QueryMacros.sortImplAsc[U]
 
-  def sortDec(f: U => Any): Query[U] =            macro QueryMacros.sortImplDesc[U]
+  def sortDec(f: U => Any) =                           macro QueryMacros.sortImplDesc[U]
 
-  def filter(f: U => Boolean): Query[U] =           macro QueryMacros.filterImpl[U]
+  def filter(f: U => Boolean) =                        macro QueryMacros.filterImpl[U]
 }
 

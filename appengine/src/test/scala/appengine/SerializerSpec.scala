@@ -1,5 +1,6 @@
-package macros
+package appengine
 
+import appengine.GAESpecTemplate
 import scalads.macroimpls
 import com.google.appengine.api.datastore.FetchOptions.Builder.withLimit
 import com.google.appengine.api.datastore.{Entity, Query, DatastoreServiceFactory}
@@ -7,6 +8,9 @@ import com.google.appengine.api.datastore.{Entity, Query, DatastoreServiceFactor
 import scalads.AbstractDatastore
 import scalads.appengine.readers.GAEObjectReader
 import scalads.appengine.writers.GAEWriter
+import org.scalatest.{BeforeAndAfter, FlatSpec}
+import org.scalatest.matchers.ShouldMatchers
+import scalads.appengine.GAEDatastore
 
 
 /**
@@ -14,25 +18,25 @@ import scalads.appengine.writers.GAEWriter
  *         Created on 5/27/13
  */
 
-class SerializerSpec extends GAESpecTemplate {
+class SerializerSpec extends FlatSpec with BeforeAndAfter with ShouldMatchers {
 
   case class Simple(in: Int, in2: String)
 
   "DSWriter" should  "Write a simple entity" in {
 
     val a = Simple(0, "one")
-    val writer = new GAEWriter(new Entity("macros.SerializerSpec.Simple"))
+    val writer = new GAEWriter(new Entity("appengine.SerializerSpec.Simple"))
     macroimpls.Serializer.serialize(a, writer)
     val ds = DatastoreServiceFactory.getDatastoreService()
     ds.put(writer.result)
-    ds.prepare(new Query("macros.SerializerSpec.Simple")).countEntities(withLimit(10)) should equal (1)
+    ds.prepare(new Query("appengine.SerializerSpec.Simple")).countEntities(withLimit(10)) should equal (1)
   }
 
   it should "Store longer strings" in {
     case class SuperString(str: String)
 
     val a = SuperString("hello"*500)
-    val ds = AbstractDatastore.getDatastoreService()
+    val ds = GAEDatastore.getDatastoreService()
 
     ds.put(a)
 
@@ -45,7 +49,7 @@ class SerializerSpec extends GAESpecTemplate {
 
     val a = Compound("Compound", Simple(0, "one"), "the end")
 
-    val writer = new GAEWriter(new Entity("macros.SerializerSpec.Compound"))
+    val writer = new GAEWriter(new Entity("appengine.SerializerSpec.Compound"))
     macroimpls.Serializer.serialize(a, writer)
     val entity = writer.result
 
@@ -61,7 +65,7 @@ class SerializerSpec extends GAESpecTemplate {
       if (txn.isActive) txn.rollback()
     }
 
-    ds.prepare(new Query("macros.SerializerSpec.Compound")).countEntities(withLimit(10)) should equal (1)
+    ds.prepare(new Query("appengine.SerializerSpec.Compound")).countEntities(withLimit(10)) should equal (1)
   }
 
   "Serializer" should "serialize objects with Lists" in {
@@ -70,7 +74,7 @@ class SerializerSpec extends GAESpecTemplate {
     val ds = DatastoreServiceFactory.getDatastoreService()
 
     val a = WithList("Bill", Simple(1, "one")::Simple(2, "two")::Nil)
-    val writer = new GAEWriter(new Entity("macros.SerializerSpec.Compound"))
+    val writer = new GAEWriter(new Entity("appengine.SerializerSpec.Compound"))
     macroimpls.Serializer.serialize(a, writer)
 
     val key = ds.put(writer.result)
