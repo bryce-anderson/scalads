@@ -5,7 +5,7 @@ import language.experimental.macros
 
 import macroimpls.QueryMacros
 import scalads.AbstractDatastore
-import scalads.readers.{ObjectReader, Reader}
+import scalads.readers.ObjectReader
 
 /**
  * @author Bryce Anderson
@@ -45,11 +45,6 @@ trait Query[U, E] { self =>
   }
 
   def mapIterator[T](f: ObjectReader => T): QueryIterator[T, E] = mapIterator( (_, r) => f(r) )
-
-  //def update(f: U => Option[U]) = ds.update(getIterator)(f)
-
-
-  // Macro impls
 
   def project[R](f: U => R): QueryIterator[R, E] =     macro QueryMacros.project[U, R, E]
 

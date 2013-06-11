@@ -1,4 +1,5 @@
-package scalads.appengine
+package scalads
+package appengine
 
 /**
  * @author Bryce Anderson
@@ -9,12 +10,14 @@ import language.experimental.macros
 
 import com.google.appengine.api.datastore.{Query => GQuery, Entity => GEntity, FetchOptions, Cursor, Key, PropertyProjection}
 import com.google.appengine.api.datastore.Query.{Filter => GFilter, CompositeFilterOperator, FilterPredicate, SortDirection}
-import scalads.readers.{ObjectReader, Reader}
-import scalads.core._
+import scalads.readers.ObjectReader
+
 
 import scala.collection.JavaConverters._
-import scalads.{core, AbstractDatastore}
-import scalads.core.SingleFilter
+
+
+import scalads.core.{EntityBacker, Query, Operation,
+        CompositeFilter, Projection, JoinOperation, Filter, SingleFilter}
 
 /**
  * @author Bryce Anderson
@@ -22,8 +25,8 @@ import scalads.core.SingleFilter
  */
 
 class GAEQuery[U](val ds: GAEDatastore,
-                        private var gQuery: GQuery,
-                        val deserializer: (AbstractDatastore[_, GEntity], ObjectReader) => U with EntityBacker[U, GEntity])
+        private var gQuery: GQuery,
+        val deserializer: (AbstractDatastore[_, GEntity], ObjectReader) => U with EntityBacker[U, GEntity])
             extends Query[U, GEntity] { self =>
 
   private var fetchOptions = FetchOptions.Builder.withDefaults()
@@ -77,9 +80,7 @@ class GAEQuery[U](val ds: GAEDatastore,
     self
   }
 
-  //def withParent(parent: U with EntityBacker[U, Entity]): this.type = withParent(parent.ds_key)
-
-  private var projections: List[Projection] = Nil
+  private var projections: List[core.Projection] = Nil
 
   def addProjection(proj: Projection): this.type = {
     if (!projections.contains(proj)) {

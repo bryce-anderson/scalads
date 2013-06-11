@@ -4,14 +4,13 @@ import language.experimental.macros
 import scala.reflect.macros.Context
 
 import scala.collection.mutable.ListBuffer
-import scalads.readers.{ObjectReader, Reader}
-import macroimpls.{Serializer, Deserializer}
-import macroimpls.macrohelpers.MacroHelpers
+import scalads.readers.ObjectReader
+import macroimpls.Serializer
 
 
 import scalads.core._
 import scalads.writers.Writer
-import scala.reflect.{ClassTag,classTag}
+import scala.reflect.ClassTag
 
 /**
  * @author Bryce Anderson
@@ -51,9 +50,10 @@ trait AbstractDatastore[Key, Entity] { self =>
 
   def putEntity(entity: Entity): Key
 
-  def putRaw(tpe: ClassTag[_], parent: Key)( f: Writer[Any] => Unit): Key     // Takes a method that will operate on the writer
+  // Takes a method that will operate on the writer
+  def putRaw(tpe: ClassTag[_], parent: Key)( f: Writer[Any] => Unit): Key
 
-  def mapQuery[U](clazz: ClassTag[U])(f: (AbstractDatastore[_, Entity], ObjectReader) => U with EntityBacker[U, Entity]): Query[U, Entity]
+  def mapQuery[U](clazz: ClassTag[U])(f: (AbstractDatastore[_, Entity], ObjectReader) => U with EntityBacker[U, Entity]): QueryType[U]
 
   def query[U](implicit clazz: ClassTag[U]): QueryType[U] = macro AbstractDatastore.queryImpl[U, Entity, QueryType[U]]
 
@@ -61,27 +61,22 @@ trait AbstractDatastore[Key, Entity] { self =>
 }
 
 object AbstractDatastore {
-  //def getDatastoreService() = new AbstractDatastore(DatastoreServiceFactory.getDatastoreService)
 
   def queryImpl[U: c.WeakTypeTag, E: c.WeakTypeTag, Q <: Query[U, E]]
   (c: Context { type PrefixType <: AbstractDatastore[_, E] })(clazz: c.Expr[ClassTag[U]]): c.Expr[Q] = {
-
-    val helpers = new MacroHelpers[c.type](c)
     import c.universe._
 
-    // val nameExpr = helpers.classNameExpr(weakTypeOf[U])
     val deserializeExpr = macroimpls.EntityDeserializer.extendWithEntityBacker[U, E](c)(
       c.Expr[AbstractDatastore[_, E]](Ident(newTermName("ds"))),
       c.Expr[ObjectReader](Ident(newTermName("reader")))
     )
-    //val typeID = c.literal(weakTypeOf[U].typeSymbol.fullName)
 
     val result = reify (
       c.prefix.splice.mapQuery(clazz.splice){(ds, reader) =>
         deserializeExpr.splice
       }
     )
-    println(result)
+    //println(result)
     result.asInstanceOf[c.Expr[Q]]
   }
 
@@ -94,7 +89,6 @@ object AbstractDatastore {
     import c.universe._
 
     val serializeExpr = Serializer.serializeImpl[U](c)(obj, c.Expr[Writer[Any]](Ident(newTermName("writer"))))
-    val tpeExpr = c.literal(weakTypeOf[U].typeSymbol.fullName)
 
     reify(
       c.prefix.splice.putRaw(clazz.splice, parent.splice){ writer: Writer[Any] => serializeExpr.splice }

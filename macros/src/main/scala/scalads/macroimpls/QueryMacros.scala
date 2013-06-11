@@ -2,11 +2,11 @@ package scalads.macroimpls
 
 import language.experimental.macros
 import scala.reflect.macros.Context
+
 import scala.util.control.Exception.catching
 
 import scalads.core._
 import scalads.readers.ObjectReader
-import scala.Some
 import scalads.core.Filter
 
 /**
@@ -60,14 +60,14 @@ object QueryMacros {
         }
       }.toMap
 
-    def setType(tpe: Type): c.Expr[Class[_]] = tpe match {
-      case tpe if tpe =:= typeOf[Int]    || tpe=:= typeOf[java.lang.Integer] =>  reify(classOf[java.lang.Integer])
-      case tpe if tpe =:= typeOf[Long]   || tpe=:= typeOf[java.lang.Long] =>  reify(classOf[java.lang.Long])
-      case tpe if tpe =:= typeOf[Double] || tpe=:= typeOf[java.lang.Double] =>  reify(classOf[java.lang.Double])
-      case tpe if tpe =:= typeOf[Float]  || tpe=:= typeOf[java.lang.Float] =>  reify(classOf[java.lang.Float])
-      case tpe if tpe =:= typeOf[String] =>  reify(classOf[java.lang.String])
-      case tpe if tpe =:= typeOf[java.util.Date] =>  reify(classOf[java.util.Date])
-    }
+//    def setType(tpe: Type): c.Expr[Class[_]] = tpe match {
+//      case tpe if tpe =:= typeOf[Int]    || tpe=:= typeOf[java.lang.Integer] =>  reify(classOf[java.lang.Integer])
+//      case tpe if tpe =:= typeOf[Long]   || tpe=:= typeOf[java.lang.Long] =>  reify(classOf[java.lang.Long])
+//      case tpe if tpe =:= typeOf[Double] || tpe=:= typeOf[java.lang.Double] =>  reify(classOf[java.lang.Double])
+//      case tpe if tpe =:= typeOf[Float]  || tpe=:= typeOf[java.lang.Float] =>  reify(classOf[java.lang.Float])
+//      case tpe if tpe =:= typeOf[String] =>  reify(classOf[java.lang.String])
+//      case tpe if tpe =:= typeOf[java.util.Date] =>  reify(classOf[java.util.Date])
+//    }
 
     val qExpr = {
       args.map{tree =>
@@ -143,7 +143,8 @@ object QueryMacros {
     val Function(List(ValDef(_, name, _, _)), body) = f.tree
 
     body match { // Make things simple
-      case Block(_, _) => c.error(c.enclosingPosition, s"Filter must have single statement filter. Received: $body")
+      case Block(_, _) => c.error(c.enclosingPosition,
+                          s"Filter must have single statement filter. Received: $body")
       case _ =>
     }
 
@@ -179,7 +180,7 @@ object QueryMacros {
 
       case Apply(Select(firstTree, operation), List(secondTree)) =>
         try { makeFilter(operation, findPath(c)(firstTree, name), secondTree) } catch {
-          // Try it backwards
+          // Try it backwards in case they did something like '4 == foo.bar'
           case e: MatchError => makeFilter(operation, findPath(c)(secondTree, name), firstTree)
         }
     } } catch {
