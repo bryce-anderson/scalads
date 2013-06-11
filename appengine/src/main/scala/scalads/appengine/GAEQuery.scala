@@ -55,17 +55,17 @@ class GAEQuery[U](val ds: GAEDatastore,
     def walk(f: Filter): GFilter = f match {
       case f: SingleFilter =>
         val op = f.op match {
-          case Operation.eq => GQuery.FilterOperator.EQUAL
-          case Operation.lt => GQuery.FilterOperator.LESS_THAN
-          case Operation.gt => GQuery.FilterOperator.GREATER_THAN
-          case Operation.le => GQuery.FilterOperator.LESS_THAN_OR_EQUAL
-          case Operation.ge => GQuery.FilterOperator.GREATER_THAN_OR_EQUAL
-          case Operation.ne => GQuery.FilterOperator.NOT_EQUAL
+          case Operation.EQ => GQuery.FilterOperator.EQUAL
+          case Operation.LT => GQuery.FilterOperator.LESS_THAN
+          case Operation.GT => GQuery.FilterOperator.GREATER_THAN
+          case Operation.LE => GQuery.FilterOperator.LESS_THAN_OR_EQUAL
+          case Operation.GE => GQuery.FilterOperator.GREATER_THAN_OR_EQUAL
+          case Operation.NE => GQuery.FilterOperator.NOT_EQUAL
         }
         new FilterPredicate(f.axis.path.mkString("."), op, f.value)
 
-      case CompositeFilter(f1, f2, JoinOperation.and) => CompositeFilterOperator.and(walk(f1), walk(f2))
-      case CompositeFilter(f1, f2, JoinOperation.or) =>  CompositeFilterOperator.or(walk(f1), walk(f2))
+      case CompositeFilter(f1, f2, JoinOperation.AND) => CompositeFilterOperator.and(walk(f1), walk(f2))
+      case CompositeFilter(f1, f2, JoinOperation.OR) =>  CompositeFilterOperator.or(walk(f1), walk(f2))
     }
 
     gQuery = gQuery.setFilter(walk(filter))
@@ -89,11 +89,11 @@ class GAEQuery[U](val ds: GAEDatastore,
     self
   }
 
-  def sortBy(field: String, dir: SortDir): this.type = {
+  def sortBy(field: String, dir: core.SortDirection): this.type = {
     import core.{SortDirection => SDir}
     gQuery = gQuery.addSort(field, dir match {
-      case SDir.asc => SortDirection.ASCENDING
-      case SDir.desc => SortDirection.DESCENDING
+      case SDir.ASC => SortDirection.ASCENDING
+      case SDir.DSC => SortDirection.DESCENDING
     })
     self
   }

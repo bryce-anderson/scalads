@@ -112,7 +112,7 @@ object QueryMacros {
     result
   }
 
-  def sortImplGeneric[U: c.WeakTypeTag](c: Context {type PrefixType = Query[U, _]})(f: c.Expr[U => Any], dir: c.Expr[SortDir]) = {
+  def sortImplGeneric[U: c.WeakTypeTag](c: Context {type PrefixType = Query[U, _]})(f: c.Expr[U => Any], dir: c.Expr[SortDirection]) = {
     import c.universe._
 
     val Function(List(ValDef(_, name, _, _)), body) = f.tree
@@ -126,12 +126,12 @@ object QueryMacros {
 
   def sortImplAsc[U: c.WeakTypeTag](c: Context {type PrefixType = Query[U, _]})(f: c.Expr[U => Any]) = {
     import c.universe._
-    sortImplGeneric(c)(f, reify(SortDirection.asc))
+    sortImplGeneric(c)(f, reify(SortDirection.ASC))
   }
 
   def sortImplDesc[U: c.WeakTypeTag](c: Context {type PrefixType = Query[U, _]})(f: c.Expr[U => Any]) = {
     import c.universe._
-    sortImplGeneric(c)(f, reify(SortDirection.desc))
+    sortImplGeneric(c)(f, reify(SortDirection.DSC))
   }
 
   def filterImpl[U: c.WeakTypeTag](c: Context {type PrefixType = Query[U, _]})(f: c.Expr[U => Boolean]) = {
@@ -148,13 +148,13 @@ object QueryMacros {
     }
 
     def makeFilter(operation: Name, path: List[String], value: Tree): c.Expr[Filter] = {
-      val op: c.Expr[Operation.Operation] = operation.decoded match {
-        case "<"  =>    reify(Operation.lt)
-        case ">"  =>    reify(Operation.gt)
-        case "<=" =>    reify(Operation.le)
-        case ">=" =>    reify(Operation.ge)
-        case "==" =>    reify(Operation.eq)
-        case "!=" =>    reify(Operation.ne)
+      val op: c.Expr[Operation] = operation.decoded match {
+        case "<"  =>    reify(Operation.LT)
+        case ">"  =>    reify(Operation.GT)
+        case "<=" =>    reify(Operation.LE)
+        case ">=" =>    reify(Operation.GE)
+        case "==" =>    reify(Operation.EQ)
+        case "!=" =>    reify(Operation.NE)
         case _ => sys.error("Failed to find operator")
       }
       val nameExpr = mkStringList(path)
@@ -162,8 +162,8 @@ object QueryMacros {
     }
 
     def makeComposite(f1: c.Expr[Filter], f2: c.Expr[Filter], operation: Name): c.Expr[CompositeFilter] = operation.decoded match {
-      case "||" =>       reify(CompositeFilter(f1.splice, f2.splice, JoinOperation.or))
-      case "&&" =>       reify(CompositeFilter(f1.splice, f2.splice, JoinOperation.and))
+      case "||" =>       reify(CompositeFilter(f1.splice, f2.splice, JoinOperation.OR))
+      case "&&" =>       reify(CompositeFilter(f1.splice, f2.splice, JoinOperation.AND))
       case _ => sys.error("Failed to find operator")
     }
 
@@ -175,7 +175,6 @@ object QueryMacros {
         ) => decompose(Apply(Select(tree1, operator), tree2)) // Repackage
 
       case Apply(Select(t1 @ Apply(_ , _), operator), List(t2)) =>
-        //println("making composite")
         makeComposite(decompose(t1), decompose(t2), operator)
 
       case Apply(Select(firstTree, operation), List(secondTree)) =>

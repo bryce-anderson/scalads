@@ -20,7 +20,7 @@ trait Query[U, E] { self =>
 
   def setFilter(filter: Filter): this.type
 
-  def sortBy(field: String, dir: SortDir): this.type
+  def sortBy(field: String, dir: SortDirection): this.type
 
   def addProjection(proj: Projection): self.type
 

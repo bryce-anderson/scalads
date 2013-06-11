@@ -8,24 +8,27 @@ import sun.font.TrueTypeFont
  */
 package object core {
 
-  type JoinOp = JoinOperation.JoinOperation
-  type FilterOp = Operation.Operation
-  type SortDir = SortDirection.SortDirection
-
   case class Projection(path: List[String])
 
-  object SortDirection extends Enumeration {
-    type SortDirection = Value
-    val asc, desc = Value
+  sealed trait SortDirection
+  object SortDirection {
+    case object ASC extends SortDirection
+    case object DSC extends SortDirection
   }
 
-  object Operation extends Enumeration {
-    type Operation = Value
-    val gt, lt, ge, le, eq, ne = Value
+  sealed trait Operation
+  object Operation {
+    case object GT extends Operation
+    case object LT extends Operation
+    case object GE extends Operation
+    case object LE extends Operation
+    case object EQ extends Operation
+    case object NE extends Operation
   }
 
-  object JoinOperation extends Enumeration {
-    type JoinOperation = Value
-    val and, or = Value
+  sealed trait JoinOperation
+  object JoinOperation {
+    case object AND extends JoinOperation
+    case object OR extends JoinOperation
   }
 }

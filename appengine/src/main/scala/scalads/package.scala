@@ -4,7 +4,6 @@
  */
 
 import com.google.appengine.api.datastore.{Entity => GEntity}
-import scalads.appengine.GAEDatastore
 
 package object scalads {
 

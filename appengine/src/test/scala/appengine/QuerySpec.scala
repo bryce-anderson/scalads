@@ -59,7 +59,7 @@ class QuerySpec extends GAESpecTemplate {
 
     addTests
 
-    ds.svc.prepare(new GQuery("appengine.QuerySpec.Test")).countEntities(withLimit(100)) should equal (10)
+    ds.svc.prepare(new GQuery(classOf[Test].getName)).countEntities(withLimit(100)) should equal (10)
 
     val results = ds.query[Test]
       .filter(_.in > 0)

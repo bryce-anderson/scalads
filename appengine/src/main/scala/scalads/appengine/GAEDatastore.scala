@@ -12,17 +12,15 @@ import scalads.core.EntityBacker
 import scalads.appengine.readers.GAEObjectReader
 import scalads.appengine.writers.GAEWriter
 
-import com.google.appengine.api.datastore.{Entity => GEntity, Key => GKey,
+import com.google.appengine.api.datastore.{Entity, Key,
                       DatastoreServiceFactory, DatastoreService, Query => GQuery}
+import scala.reflect.ClassTag
 
 /**
  * @author Bryce Anderson
  *         Created on 6/9/13
  */
-class GAEDatastore(val svc: DatastoreService) extends AbstractDatastore[GKey, GEntity] { self =>
-  type Entity = GEntity
-  type Key = GKey
-  type Repr = GAEDatastore
+class GAEDatastore(val svc: DatastoreService) extends AbstractDatastore[Key, Entity] { self =>
 
   type QueryType[U] = GAEQuery[U]
 
@@ -40,36 +38,33 @@ class GAEDatastore(val svc: DatastoreService) extends AbstractDatastore[GKey, GE
 
   def put(entities: Iterable[Entity]) { svc.put(entities.asJava) }
 
-  def putWithParent[U](obj: U, key: Key) = macro GAEDatastore.putWithParent[U]
+  def putWithParent[U](obj: U, key: Key)(implicit clazz: ClassTag[U]) = macro GAEDatastore.putWithParent[U]
 
   def putEntity(entity: Entity): Key = svc.put(entity)
 
-  def putRaw(tpe: String, parent: Key, f: (Writer[Any]) => Unit): Key = {
-    val writer = new GAEWriter(new Entity(tpe, parent))
+  def putRaw(tpe: ClassTag[_], parent: Key)(f: (Writer[Any]) => Unit): Key = {
+    val writer = new GAEWriter(new Entity(tpe.runtimeClass.getName, parent))
     f(writer)
     putEntity(writer.result)
   }
 
-  def mapQuery[U](tpe: String)(f: (AbstractDatastore[_, Entity], ObjectReader) => U with EntityBacker[U, Entity]): GAEQuery[U] = {
-
-    new GAEQuery[U](self, new GQuery(tpe), f)
+  def mapQuery[U](clazz: ClassTag[U])(f: (AbstractDatastore[_, Entity], ObjectReader) => U with EntityBacker[U, Entity]): GAEQuery[U] = {
+    new GAEQuery[U](self, new GQuery(clazz.runtimeClass.getName), f)
   }
-
-  //def query[U]: GAEQuery[U] = macro AbstractDatastore.queryImpl[U, Entity, GAEQuery[U]]
 }
 
 object GAEDatastore {
   def getDatastoreService() = new GAEDatastore(DatastoreServiceFactory.getDatastoreService)
 
-  def putWithParent[U: c.WeakTypeTag](c: Context { type PrefixType = GAEDatastore})(obj: c.Expr[U], key: c.Expr[GKey]): c.Expr[Unit] = {
+  def putWithParent[U: c.WeakTypeTag](c: Context { type PrefixType = GAEDatastore})
+                   (obj: c.Expr[U], key: c.Expr[Key])(clazz: c.Expr[ClassTag[U]]): c.Expr[Unit] = {
     import c.universe._
     import scalads.macroimpls.Serializer.serializeImpl
 
 
-    val deserializer = serializeImpl(c)(obj, c.Expr[Writer[GEntity]](Ident(newTermName("writer"))))
-    val nameExpr = c.literal(weakTypeOf[U].typeSymbol.fullName)
+    val deserializer = serializeImpl(c)(obj, c.Expr[Writer[Entity]](Ident(newTermName("writer"))))
     reify {
-      c.prefix.splice.putRaw(nameExpr.splice, key.splice, writer => deserializer.splice)
+      c.prefix.splice.putRaw(clazz.splice, key.splice)( writer => deserializer.splice)
     }
   }
 }

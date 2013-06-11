@@ -11,7 +11,7 @@ import macroimpls.macrohelpers.MacroHelpers
 
 import scalads.core._
 import scalads.writers.Writer
-import scala.reflect.runtime.universe.TypeTag
+import scala.reflect.{ClassTag,classTag}
 
 /**
  * @author Bryce Anderson
@@ -51,22 +51,20 @@ trait AbstractDatastore[Key, Entity] { self =>
 
   def putEntity(entity: Entity): Key
 
-  def putRaw(tpe: String, parent: Key, f: Writer[Any] => Unit): Key     // Takes a method that will operate on the writer
+  def putRaw(tpe: ClassTag[_], parent: Key)( f: Writer[Any] => Unit): Key     // Takes a method that will operate on the writer
 
-  def mapQuery[U](tpe: String)(f: (AbstractDatastore[_, Entity], ObjectReader) => U with EntityBacker[U, Entity]): Query[U, Entity]
+  def mapQuery[U](clazz: ClassTag[U])(f: (AbstractDatastore[_, Entity], ObjectReader) => U with EntityBacker[U, Entity]): Query[U, Entity]
 
-  //def query[U]: Query[U, Entity] = macro AbstractDatastore.queryImpl[U, Entity]
+  def query[U](implicit clazz: ClassTag[U]): QueryType[U] = macro AbstractDatastore.queryImpl[U, Entity, QueryType[U]]
 
-  def query[U]: QueryType[U] = macro AbstractDatastore.queryImpl[U, Entity, QueryType[U]]
-
-  def put[U](obj: U): Key = macro AbstractDatastore.putImplNoKey[U, Key, Entity]
+  def put[U](obj: U)(implicit clazz: ClassTag[U]): Key = macro AbstractDatastore.putImplNoKey[U, Key, Entity]
 }
 
 object AbstractDatastore {
   //def getDatastoreService() = new AbstractDatastore(DatastoreServiceFactory.getDatastoreService)
 
   def queryImpl[U: c.WeakTypeTag, E: c.WeakTypeTag, Q <: Query[U, E]]
-  (c: Context { type PrefixType <: AbstractDatastore[_, E] }): c.Expr[Q] = {
+  (c: Context { type PrefixType <: AbstractDatastore[_, E] })(clazz: c.Expr[ClassTag[U]]): c.Expr[Q] = {
 
     val helpers = new MacroHelpers[c.type](c)
     import c.universe._
@@ -76,9 +74,10 @@ object AbstractDatastore {
       c.Expr[AbstractDatastore[_, E]](Ident(newTermName("ds"))),
       c.Expr[ObjectReader](Ident(newTermName("reader")))
     )
-    val typeID = c.literal(weakTypeOf[U].typeSymbol.fullName)
+    //val typeID = c.literal(weakTypeOf[U].typeSymbol.fullName)
+
     val result = reify (
-      c.prefix.splice.mapQuery(typeID.splice){(ds, reader) =>
+      c.prefix.splice.mapQuery(clazz.splice){(ds, reader) =>
         deserializeExpr.splice
       }
     )
@@ -87,18 +86,18 @@ object AbstractDatastore {
   }
 
   def putImplNoKey[U: c.WeakTypeTag, K, E](c: Context {type PrefixType = AbstractDatastore[K, E] })
-                                          (obj: c.Expr[U]): c.Expr[K] =
-    putImpl[U, K, E](c)(obj, c.universe.reify(null).asInstanceOf[c.Expr[K]])
+                                          (obj: c.Expr[U])(clazz: c.Expr[ClassTag[U]]): c.Expr[K] =
+    putImpl[U, K, E](c)(obj, c.universe.reify(null).asInstanceOf[c.Expr[K]])(clazz)
 
   def putImpl[U: c.WeakTypeTag, K, E](c: Context { type PrefixType = AbstractDatastore [K, E]})
-                                     (obj: c.Expr[U], parent: c.Expr[K]) = {
+                    (obj: c.Expr[U], parent: c.Expr[K])(clazz: c.Expr[ClassTag[U]]) = {
     import c.universe._
 
     val serializeExpr = Serializer.serializeImpl[U](c)(obj, c.Expr[Writer[Any]](Ident(newTermName("writer"))))
     val tpeExpr = c.literal(weakTypeOf[U].typeSymbol.fullName)
 
     reify(
-      c.prefix.splice.putRaw(tpeExpr.splice, parent.splice, { writer: Writer[Any] => serializeExpr.splice })
+      c.prefix.splice.putRaw(clazz.splice, parent.splice){ writer: Writer[Any] => serializeExpr.splice }
     )
   }
 }
