@@ -89,15 +89,20 @@ class QuerySpec extends GAESpecTemplate {
   it should "do projections properly" in {
     addTests
 
-    val results = ds.query[Test]
+    val results1 = ds.query[Test]
           .project{ i => (i.in, i.in2) }
 
-    print(results)
+    results1.length should equal(10)
+
+    val results2 = ds.query[Test]
+      .project( i => i.in )
+    results2.toList should equal((0 until 10).toList)
+
   }
 
   it should "project types properly" in {
     val date = new Date()
-    val types = Types(1, 2, 3.0f, 4, "five",date)
+    val types = Types(1, 2, 3.0f, 4, "five", date)
     ds.put(types )
 
     val result = ds.query[Types]
@@ -125,6 +130,18 @@ class QuerySpec extends GAESpecTemplate {
     result._1 should equal(comp.in)
     result._2 should equal(comp.in2.in)
   }
+
+//  it should "project compound objects with modifiers" in {
+//    val comp = Compound(1, Test(1, "one"))
+//    ds.put(comp)
+//
+//    val result = ds.query[Compound]
+//      .project( i => (i.in, i.in2.in*4))
+//      .next()
+//
+//    result._1 should equal(comp.in)
+//    result._2 should equal(comp.in2.in*4)
+//  }
 
 //  "Datastore" should "put java collections in the datastore" in {
 //    import com.google.appengine.api.datastore.Entity

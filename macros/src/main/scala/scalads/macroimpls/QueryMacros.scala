@@ -45,7 +45,13 @@ object QueryMacros {
       case _ =>
     }
 
-    val Apply(ctorTree, args) = body
+    // Needs to work with single values as well
+    val (ctorTree, args) = try{
+      body match {
+        case Apply(ctorTree, args) => (Some(ctorTree), args)
+        case arg@Select(_, _)      => (None, arg::Nil)
+      }
+    }
 
     val fieldTypes: Map[String, Type] = args.map{tree => catching(classOf[MatchError]).opt(findPath(c)(tree, name))}
       .collect{ case Some(str) => str }
@@ -105,7 +111,10 @@ object QueryMacros {
       })
     }
 
-    val applyExpr = c.Expr[R](Block(Nil, Apply(ctorTree, entityExtractors)))
+    val applyExpr = ctorTree match {
+      case Some(ctorTree) => c.Expr[R](Block(Nil, Apply(ctorTree, entityExtractors)))
+      case None           => c.Expr[R](entityExtractors.head)
+    }
 
     val result = reify(qExpr.splice.mapIterator{ reader => applyExpr.splice })
     println(s"Projection: $result")
