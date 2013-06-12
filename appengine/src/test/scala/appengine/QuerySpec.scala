@@ -135,12 +135,22 @@ class QuerySpec extends GAESpecTemplate {
     val comp = Compound(1, Test(1, "one"))
     ds.put(comp)
 
-    val result = ds.query[Compound]
+    val result1 = ds.query[Compound]
       .project( i => (i.in, i.in2.in*4))
       .next()
 
-    result._1 should equal(comp.in)
-    result._2 should equal(comp.in2.in*4)
+    result1._1 should equal(comp.in)
+    result1._2 should equal(comp.in2.in*4)
+
+    val result2 = ds.query[Compound]
+      .project{i =>
+      val a = i.in
+      val b = 34
+      (a, i.in2.in*b)
+    }.next()
+
+    result2._1 should equal(comp.in)
+    result2._2 should equal(comp.in2.in*34)
   }
 
 //  "Datastore" should "put java collections in the datastore" in {

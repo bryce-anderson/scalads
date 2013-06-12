@@ -40,10 +40,10 @@ object QueryMacros {
     val Function(List(ValDef(_, name, _, _)), body) = f.tree
     val tpe = weakTypeOf[U]
 
-    body match { // Make things simple
-      case Block(_, _) => c.error(c.enclosingPosition, s"Filter must have single statement filter. Received: $body")
-      case _ =>
-    }
+//    body match { // Make things simple
+//      case Block(_, _) => c.error(c.enclosingPosition, s"Filter must have single statement filter. Received: $body")
+//      case _ =>
+//    }
 
     def getType(stack: List[String]): Option[Type] = {
       stack.foldLeft[Option[Type]](Some(tpe)){ (t, n) =>
