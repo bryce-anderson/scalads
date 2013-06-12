@@ -45,49 +45,23 @@ object QueryMacros {
       case _ =>
     }
 
-    // Needs to work with single values as well
-    val (ctorTree, args) = try{
-      body match {
-        case Apply(ctorTree, args) => (Some(ctorTree), args)
-        case arg@Select(_, _)      => (None, arg::Nil)
+    def getType(stack: List[String]): Option[Type] = {
+      stack.foldLeft[Option[Type]](Some(tpe)){ (t, n) =>
+        t.flatMap(_.member(nme.CONSTRUCTOR).asMethod.paramss.flatten.find(_.name.decoded == n).map(_.typeSignature))
       }
     }
 
-    val fieldTypes: Map[String, Type] = args.map{tree => catching(classOf[MatchError]).opt(findPath(c)(tree, name))}
-      .collect{ case Some(str) => str }
-      .map { stack =>
-        stack.foldLeft(tpe){ (t, n) => t.member(newTermName(n)).typeSignature } match {
-          case tpe if tpe.typeSymbol.name.decoded == "Int" =>    (stack.mkString("."), typeOf[Int])
-          case tpe if tpe.typeSymbol.name.decoded == "Long" =>   (stack.mkString("."), typeOf[Long]  )
-          case tpe if tpe.typeSymbol.name.decoded == "Double" => (stack.mkString("."), typeOf[Double])
-          case tpe if tpe.typeSymbol.name.decoded == "Float" =>  (stack.mkString("."), typeOf[Float]   )
-          case tpe if tpe.typeSymbol.name.decoded == "String" => (stack.mkString("."), typeOf[String]  )
-          case tpe if tpe.typeSymbol.name.decoded == "Date" =>   (stack.mkString("."), typeOf[java.util.Date])
-        }
-      }.toMap
-
-//    def setType(tpe: Type): c.Expr[Class[_]] = tpe match {
-//      case tpe if tpe =:= typeOf[Int]    || tpe=:= typeOf[java.lang.Integer] =>  reify(classOf[java.lang.Integer])
-//      case tpe if tpe =:= typeOf[Long]   || tpe=:= typeOf[java.lang.Long] =>  reify(classOf[java.lang.Long])
-//      case tpe if tpe =:= typeOf[Double] || tpe=:= typeOf[java.lang.Double] =>  reify(classOf[java.lang.Double])
-//      case tpe if tpe =:= typeOf[Float]  || tpe=:= typeOf[java.lang.Float] =>  reify(classOf[java.lang.Float])
-//      case tpe if tpe =:= typeOf[String] =>  reify(classOf[java.lang.String])
-//      case tpe if tpe =:= typeOf[java.util.Date] =>  reify(classOf[java.util.Date])
-//    }
-
-    val qExpr = {
-      args.map{tree =>
-        try{ Right(findPath(c)(tree, name))
-        } catch {
-          case _: MatchError => Left(tree)
-        }
-      }.foldLeft(c.prefix){ (q, either) => either match {
-        case Right(path) =>
-          val stackExpr = mkStringList(path)
-          reify{q.splice.addProjection(Projection(stackExpr.splice))}
-        case _ => q
-        }
+    def findNameOption(tree: Tree): Option[(List[String], Type)] = {
+      def findNameOption(tree: Tree, stack: List[String]): Option[(List[String], Type)] = tree match {
+        case Select(Ident(inName), otherTree) if inName == name =>
+          val fullStack = otherTree.decoded::stack
+          getType(fullStack).map((fullStack, _))
+        case Select(Ident(inName), otherTree) if inName != name => None
+        case Select(inner, outer) => findNameOption(inner, outer.encoded::stack)
+        case _ => None
+        //case e => println(s"Failed on tree: ${showRaw(e)}"); sys.error("")   // TODO: debug
       }
+      findNameOption(tree, Nil)
     }
 
     def pathReader(reader: c.Expr[ObjectReader], stack: List[String]): (c.Expr[ObjectReader], String) = stack match {
@@ -95,28 +69,49 @@ object QueryMacros {
       case h::t =>  val name = c.literal(h); pathReader(reify(reader.splice.getObjectReader(name.splice)), t)
     }
 
-    val entityExtractors: List[Tree] = args.map{tree => try {Right(findPath(c)(tree, name))} catch {case m: MatchError => Left(tree)} }
-      .map{ treeOrName =>
-      treeOrName.fold( identity, { nameStack =>
-        val (readerExpr, key) = pathReader(c.Expr[ObjectReader](Ident(newTermName("reader"))), nameStack)
-        val nameExpr = c.literal(key)
-        fieldTypes(nameStack.mkString(".")) match {
-          case tpe if tpe =:= typeOf[Int] || tpe=:= typeOf[java.lang.Integer] => reify{readerExpr.splice.getInt(nameExpr.splice)}.tree
-          case tpe if tpe =:= typeOf[Long] || tpe=:= typeOf[java.lang.Long] => reify{readerExpr.splice.getLong(nameExpr.splice)}.tree
-          case tpe if tpe =:= typeOf[Float] || tpe=:= typeOf[java.lang.Float] => reify{readerExpr.splice.getFloat(nameExpr.splice)}.tree
-          case tpe if tpe =:= typeOf[Double] || tpe=:= typeOf[java.lang.Double] => reify{readerExpr.splice.getDouble(nameExpr.splice)}.tree
-          case tpe if tpe =:= typeOf[String] => reify{readerExpr.splice.getString(nameExpr.splice)}.tree
-          case tpe if tpe =:= typeOf[java.util.Date] => reify{readerExpr.splice.getDate(nameExpr.splice)}.tree
+
+    var projections: List[List[String]] = Nil
+
+    val splicer = new Transformer {
+
+      override def transform(tree: Tree): Tree = {
+        findNameOption(tree) match {
+          case Some((stack, tpe)) =>
+            val (readerExpr, key) = pathReader(c.Expr[ObjectReader](Ident(newTermName("reader"))), stack)
+
+            projections = stack::projections
+
+            // Deal with the projection
+            val nameExpr = c.literal(key)
+            val resultTree = tpe match {
+              case tpe if tpe =:= typeOf[Int] || tpe=:= typeOf[java.lang.Integer] => reify{readerExpr.splice.getInt(nameExpr.splice)}.tree
+              case tpe if tpe =:= typeOf[Long] || tpe=:= typeOf[java.lang.Long] => reify{readerExpr.splice.getLong(nameExpr.splice)}.tree
+              case tpe if tpe =:= typeOf[Float] || tpe=:= typeOf[java.lang.Float] => reify{readerExpr.splice.getFloat(nameExpr.splice)}.tree
+              case tpe if tpe =:= typeOf[Double] || tpe=:= typeOf[java.lang.Double] => reify{readerExpr.splice.getDouble(nameExpr.splice)}.tree
+              case tpe if tpe =:= typeOf[String] => reify{readerExpr.splice.getString(nameExpr.splice)}.tree
+              case tpe if tpe =:= typeOf[java.util.Date] => reify{readerExpr.splice.getDate(nameExpr.splice)}.tree
+            }
+
+            //super.transform(tree)
+            resultTree
+
+
+          case None => super.transform(tree)
         }
-      })
+      }
     }
 
-    val applyExpr = ctorTree match {
-      case Some(ctorTree) => c.Expr[R](Block(Nil, Apply(ctorTree, entityExtractors)))
-      case None           => c.Expr[R](entityExtractors.head)
+    val bodyTree = c.Expr[R](c.resetLocalAttrs(splicer.transform(body)))
+
+    val qExpr = projections.foldLeft(c.prefix){ (p, s) =>
+      val projExpr = mkStringList(s)
+      reify(p.splice.addProjection(Projection(projExpr.splice)))
     }
 
-    val result = reify(qExpr.splice.mapIterator{ reader => applyExpr.splice })
+    val result = reify {
+      qExpr.splice.mapIterator( reader => bodyTree.splice)
+    }
+
     println(s"Projection: $result")
     result
   }

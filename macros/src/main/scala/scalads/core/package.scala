@@ -8,7 +8,7 @@ import sun.font.TrueTypeFont
  */
 package object core {
 
-  case class Projection(path: List[String])
+  case class Projection(path: List[String], clazz: Class[_] = null)
 
   sealed trait SortDirection
   object SortDirection {

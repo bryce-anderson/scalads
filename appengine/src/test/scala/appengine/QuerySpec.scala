@@ -49,7 +49,7 @@ class QuerySpec extends GAESpecTemplate {
     val query = ds.query[Test]
         .filter(_.in < 0)
 
-    val test = Test(1, "two")
+    val test =  Test(1, "two")
     query.filter{ bryce =>  bryce.in < test.in }
 
     query.filter{ bryce => test.in < bryce.in }
@@ -131,17 +131,17 @@ class QuerySpec extends GAESpecTemplate {
     result._2 should equal(comp.in2.in)
   }
 
-//  it should "project compound objects with modifiers" in {
-//    val comp = Compound(1, Test(1, "one"))
-//    ds.put(comp)
-//
-//    val result = ds.query[Compound]
-//      .project( i => (i.in, i.in2.in*4))
-//      .next()
-//
-//    result._1 should equal(comp.in)
-//    result._2 should equal(comp.in2.in*4)
-//  }
+  it should "project compound objects with modifiers" in {
+    val comp = Compound(1, Test(1, "one"))
+    ds.put(comp)
+
+    val result = ds.query[Compound]
+      .project( i => (i.in, i.in2.in*4))
+      .next()
+
+    result._1 should equal(comp.in)
+    result._2 should equal(comp.in2.in*4)
+  }
 
 //  "Datastore" should "put java collections in the datastore" in {
 //    import com.google.appengine.api.datastore.Entity
