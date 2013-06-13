@@ -8,6 +8,7 @@ import scala.util.control.Exception.catching
 import scalads.core._
 import scalads.readers.ObjectReader
 import scalads.core.Filter
+import scala.collection.mutable.ListBuffer
 
 /**
  * @author Bryce Anderson
@@ -40,11 +41,6 @@ object QueryMacros {
     val Function(List(ValDef(_, name, _, _)), body) = f.tree
     val tpe = weakTypeOf[U]
 
-//    body match { // Make things simple
-//      case Block(_, _) => c.error(c.enclosingPosition, s"Filter must have single statement filter. Received: $body")
-//      case _ =>
-//    }
-
     def getType(stack: List[String]): Option[Type] = {
       stack.foldLeft[Option[Type]](Some(tpe)){ (t, n) =>
         t.flatMap(_.member(nme.CONSTRUCTOR).asMethod.paramss.flatten.find(_.name.decoded == n).map(_.typeSignature))
@@ -59,7 +55,6 @@ object QueryMacros {
         case Select(Ident(inName), otherTree) if inName != name => None
         case Select(inner, outer) => findNameOption(inner, outer.encoded::stack)
         case _ => None
-        //case e => println(s"Failed on tree: ${showRaw(e)}"); sys.error("")   // TODO: debug
       }
       findNameOption(tree, Nil)
     }
@@ -69,17 +64,15 @@ object QueryMacros {
       case h::t =>  val name = c.literal(h); pathReader(reify(reader.splice.getObjectReader(name.splice)), t)
     }
 
-
-    var projections: List[List[String]] = Nil
+    var projections = new ListBuffer[List[String]]
 
     val splicer = new Transformer {
 
       override def transform(tree: Tree): Tree = {
         findNameOption(tree) match {
           case Some((stack, tpe)) =>
+            projections += stack
             val (readerExpr, key) = pathReader(c.Expr[ObjectReader](Ident(newTermName("reader"))), stack)
-
-            projections = stack::projections
 
             // Deal with the projection
             val nameExpr = c.literal(key)
@@ -91,10 +84,7 @@ object QueryMacros {
               case tpe if tpe =:= typeOf[String] => reify{readerExpr.splice.getString(nameExpr.splice)}.tree
               case tpe if tpe =:= typeOf[java.util.Date] => reify{readerExpr.splice.getDate(nameExpr.splice)}.tree
             }
-
-            //super.transform(tree)
             resultTree
-
 
           case None => super.transform(tree)
         }
@@ -103,7 +93,7 @@ object QueryMacros {
 
     val bodyTree = c.Expr[R](c.resetLocalAttrs(splicer.transform(body)))
 
-    val qExpr = projections.foldLeft(c.prefix){ (p, s) =>
+    val qExpr = projections.result.foldLeft(c.prefix){ (p, s) =>
       val projExpr = mkStringList(s)
       reify(p.splice.addProjection(Projection(projExpr.splice)))
     }
@@ -120,11 +110,9 @@ object QueryMacros {
     import c.universe._
 
     val Function(List(ValDef(_, name, _, _)), body) = f.tree
-    val nameStr = c.Expr[String](Literal(Constant(findName(c)(body, name))))
+    val nameStr = c.literal(findName(c)(body, name))
 
-    val result = reify{
-      c.prefix.splice.sortBy(nameStr.splice, dir.splice)
-    }
+    val result = reify(c.prefix.splice.sortBy(nameStr.splice, dir.splice))
     result
   }
 
