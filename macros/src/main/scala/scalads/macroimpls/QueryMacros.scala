@@ -27,7 +27,6 @@ object QueryMacros {
       case Select(Ident(inName), otherTree) if inName == name => otherTree.decoded::stack // Finished
       case Select(Ident(inName), otherTree) if inName != name => throw new MatchError(tree)
       case Select(inner, outer) => findName(inner, outer.encoded::stack)
-      //case e => println(s"Failed on tree: ${showRaw(e)}"); sys.error("")   // TODO: debug
     }
     findName(tree, Nil)
   }
@@ -64,14 +63,14 @@ object QueryMacros {
       case h::t =>  val name = c.literal(h); pathReader(reify(reader.splice.getObjectReader(name.splice)), t)
     }
 
-    var projections = new ListBuffer[List[String]]
+    var projections = new ListBuffer[(List[String], Type)]
 
     val splicer = new Transformer {
 
       override def transform(tree: Tree): Tree = {
         findNameOption(tree) match {
           case Some((stack, tpe)) =>
-            projections += stack
+            projections += ((stack, tpe))
             val (readerExpr, key) = pathReader(c.Expr[ObjectReader](Ident(newTermName("reader"))), stack)
 
             // Deal with the projection
@@ -94,15 +93,16 @@ object QueryMacros {
     val bodyTree = c.Expr[R](c.resetLocalAttrs(splicer.transform(body)))
 
     val qExpr = projections.result.foldLeft(c.prefix){ (p, s) =>
-      val projExpr = mkStringList(s)
-      reify(p.splice.addProjection(Projection(projExpr.splice)))
+      val projExpr = mkStringList(s._1)
+      val clazzExpr = c.Expr[Class[_]](Literal(Constant(s._2)))
+      reify(p.splice.addProjection(Projection(projExpr.splice, clazzExpr.splice)))
     }
 
     val result = reify {
       qExpr.splice.mapIterator( reader => bodyTree.splice)
     }
 
-    println(s"Projection: $result")
+    //println(s"Projection: $result")
     result
   }
 
@@ -151,7 +151,8 @@ object QueryMacros {
         case _ => sys.error("Failed to find operator")
       }
       val nameExpr = mkStringList(path)
-      reify (SingleFilter(Projection(nameExpr.splice), op.splice, c.Expr[Any](value).splice))
+      val classExpr = c.Expr[Class[_]](Literal(Constant(value.tpe)))
+      reify (SingleFilter(Projection(nameExpr.splice, classExpr.splice), op.splice, c.Expr[Any](value).splice))
     }
 
     def makeComposite(f1: c.Expr[Filter], f2: c.Expr[Filter], operation: Name): c.Expr[CompositeFilter] = operation.decoded match {
@@ -181,7 +182,7 @@ object QueryMacros {
 
     val filter = decompose(body)
     //println(s"------------------Body:\n${showRaw(body)}")
-    //println(s"----------------- Decomposed:\n${filter.tree}")
+    println(s"----------------- Decomposed:\n${filter.tree}")
 
     reify{c.prefix.splice.setFilter(filter.splice)}
   }

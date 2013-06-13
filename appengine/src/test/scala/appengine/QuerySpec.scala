@@ -14,7 +14,7 @@ class QuerySpec extends GAESpecTemplate {
 
   val ds = GAEDatastore.getDatastoreService()
 
-  def addTests = {
+  def addTests  = {
     0 until 10 foreach { i =>
       val test = Test(i, "test " + i)
       ds.put(test)
@@ -102,7 +102,7 @@ class QuerySpec extends GAESpecTemplate {
 
   it should "project types properly" in {
     val date = new Date()
-    val types = Types(1, 2, 3.0f, 4, "five", date)
+    val types =  Types(1, 2, 3.0f, 4, "five", date)
     ds.put(types )
 
     val result = ds.query[Types]

@@ -80,12 +80,13 @@ class GAEQuery[U](val ds: GAEDatastore,
     self
   }
 
-  private var projections: List[core.Projection] = Nil
+  private var projections: List[Projection] = Nil
 
   def addProjection(proj: Projection): this.type = {
     if (!projections.contains(proj)) {
       projections = proj::projections
-      gQuery = gQuery.addProjection(new PropertyProjection(proj.path.mkString("."), null))
+      gQuery = gQuery.addProjection(new PropertyProjection(proj.path.mkString("."),
+        GAEQuery.clazzMap.get(proj.clazz).getOrElse(proj.clazz)))
     }
     self
   }
@@ -98,6 +99,15 @@ class GAEQuery[U](val ds: GAEDatastore,
     })
     self
   }
+}
+
+object GAEQuery {
+  private[GAEQuery] val clazzMap: Map[Class[_], Class[_]] = Map(
+    classOf[Int] -> classOf[java.lang.Integer],
+    classOf[Long] -> classOf[java.lang.Long],
+    classOf[Double] -> classOf[java.lang.Double],
+    classOf[Float] -> classOf[java.lang.Float]
+  )
 }
 
 
