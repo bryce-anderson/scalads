@@ -18,6 +18,7 @@ import scala.collection.JavaConverters._
 
 import scalads.core.{EntityBacker, Query, Operation,
         CompositeFilter, Projection, JoinOperation, Filter, SingleFilter}
+import scalads.macroimpls.EntityMaker
 
 /**
  * @author Bryce Anderson
@@ -26,7 +27,7 @@ import scalads.core.{EntityBacker, Query, Operation,
 
 class GAEQuery[U](val ds: GAEDatastore,
         private var gQuery: GQuery,
-        val deserializer: (AbstractDatastore[_, GEntity], ObjectReader) => U with EntityBacker[U, GEntity])
+        val deserializer: EntityMaker[U, Entity])
             extends Query[U, GEntity] { self =>
 
   private var fetchOptions = FetchOptions.Builder.withDefaults()

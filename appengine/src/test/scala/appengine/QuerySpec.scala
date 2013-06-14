@@ -100,7 +100,7 @@ class QuerySpec extends GAESpecTemplate  {
 
   }
 
-  it should "project types properly" in {
+  it should  "project types properly" in {
     val date = new Date()
     val types =  Types(1, 2, 3.0f, 4, "five", date)
     ds.put(types )

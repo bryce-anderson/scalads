@@ -8,7 +8,7 @@ object Settings {
   val buildSettings = Defaults.defaultSettings ++ Seq(
     organization := "org.scalamacros",
     version := "0.1.0",
-    scalaVersion := "2.10.1",
+    scalaVersion := "2.10.2-RC1",
     scalacOptions ++= Seq(),
     libraryDependencies <+= scalaVersion("org.scala-lang" % "scala-reflect" % _),
     libraryDependencies += ScalaTest % "test"

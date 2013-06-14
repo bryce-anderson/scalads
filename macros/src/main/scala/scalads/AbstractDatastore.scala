@@ -5,7 +5,7 @@ import scala.reflect.macros.Context
 
 import scala.collection.mutable.ListBuffer
 import scalads.readers.ObjectReader
-import macroimpls.Serializer
+import scalads.macroimpls.{EntitySerializer, EntityMaker, Serializer}
 
 
 import scalads.core._
@@ -16,7 +16,7 @@ import scala.reflect.ClassTag
  * @author Bryce Anderson
  *         Created on 5/31/13
  */
-trait AbstractDatastore[Key, Entity] { self =>
+trait AbstractDatastore[Key >: Null, Entity] { self =>
 
   type QueryType[U] <: Query[U, Entity]
 
@@ -53,45 +53,15 @@ trait AbstractDatastore[Key, Entity] { self =>
   // Takes a method that will operate on the writer
   def putRaw(tpe: ClassTag[_], parent: Key)( f: Writer[Any] => Unit): Key
 
-  def mapQuery[U](clazz: ClassTag[U])(f: (AbstractDatastore[_, Entity], ObjectReader) => U with EntityBacker[U, Entity]): QueryType[U]
+  def query[U](implicit clazz: ClassTag[U], entityMaker: EntityMaker[U, Entity]): QueryType[U]
 
-  def query[U](implicit clazz: ClassTag[U]): QueryType[U] = macro AbstractDatastore.queryImpl[U, Entity, QueryType[U]]
-
-  def put[U](obj: U)(implicit clazz: ClassTag[U]): Key = macro AbstractDatastore.putImplNoKey[U, Key, Entity]
+  def put[U: EntitySerializer: ClassTag](obj: U, parent: Key = null): Key = {
+    putRaw(implicitly[ClassTag[U]], parent)( writer =>
+      implicitly[EntitySerializer[U]].serialize(obj, writer)
+    )
+  }
 }
 
 object AbstractDatastore {
 
-  def queryImpl[U: c.WeakTypeTag, E: c.WeakTypeTag, Q <: Query[U, E]]
-  (c: Context { type PrefixType <: AbstractDatastore[_, E] })(clazz: c.Expr[ClassTag[U]]): c.Expr[Q] = {
-    import c.universe._
-
-    val deserializeExpr = macroimpls.EntityDeserializer.extendWithEntityBacker[U, E](c)(
-      c.Expr[AbstractDatastore[_, E]](Ident(newTermName("ds"))),
-      c.Expr[ObjectReader](Ident(newTermName("reader")))
-    )
-
-    val result = reify (
-      c.prefix.splice.mapQuery(clazz.splice){(ds, reader) =>
-        deserializeExpr.splice
-      }
-    )
-    //println(result)
-    result.asInstanceOf[c.Expr[Q]]
-  }
-
-  def putImplNoKey[U: c.WeakTypeTag, K, E](c: Context {type PrefixType = AbstractDatastore[K, E] })
-                                          (obj: c.Expr[U])(clazz: c.Expr[ClassTag[U]]): c.Expr[K] =
-    putImpl[U, K, E](c)(obj, c.universe.reify(null).asInstanceOf[c.Expr[K]])(clazz)
-
-  def putImpl[U: c.WeakTypeTag, K, E](c: Context { type PrefixType = AbstractDatastore [K, E]})
-                    (obj: c.Expr[U], parent: c.Expr[K])(clazz: c.Expr[ClassTag[U]]) = {
-    import c.universe._
-
-    val serializeExpr = Serializer.serializeImpl[U](c)(obj, c.Expr[Writer[Any]](Ident(newTermName("writer"))))
-
-    reify(
-      c.prefix.splice.putRaw(clazz.splice, parent.splice){ writer: Writer[Any] => serializeExpr.splice }
-    )
-  }
 }

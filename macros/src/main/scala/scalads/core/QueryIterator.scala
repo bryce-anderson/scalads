@@ -3,6 +3,7 @@ package core
 
 
 import scalads.readers.ObjectReader
+import scalads.macroimpls.EntityMaker
 
 /**
  * @author Bryce Anderson
@@ -39,13 +40,14 @@ trait QueryIterator[+A, E]
 }
 
 object QueryIterator {
-  def apply[A, E](datastore: AbstractDatastore[_, E], it: Iterator[E], f: (AbstractDatastore[_, E], ObjectReader) => A) = new QueryIterator[A, E] {
-    def hasNext: Boolean = it.hasNext
+  def apply[A, E](datastore: AbstractDatastore[_, E], it: Iterator[E])(f: (AbstractDatastore[_, E], ObjectReader) => A) =
+    new QueryIterator[A, E] {
+      def hasNext: Boolean = it.hasNext
 
-    def ds = datastore
+      def ds = datastore
 
-    val deserializer: (DS, ObjectReader) => A = f
+      val deserializer: (DS, ObjectReader) => A = f
 
-    def nextEntity(): E = it.next()
-  }
+      def nextEntity(): E = it.next()
+    }
 }

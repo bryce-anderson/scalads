@@ -3,7 +3,7 @@ package core
 
 import language.experimental.macros
 
-import macroimpls.QueryMacros
+import scalads.macroimpls.{EntityMaker, QueryMacros}
 import scalads.AbstractDatastore
 import scalads.readers.ObjectReader
 
@@ -26,11 +26,13 @@ trait Query[U, E] { self =>
 
   def runQuery: Iterator[E]
 
-  def deserializer: (DS, ObjectReader) => U with EntityBacker[U, E]
+  def deserializer: EntityMaker[U, E]
 
   def limit(size: Int): this.type
 
-  def getIterator: QueryIterator[U with EntityBacker[U, E], E] = QueryIterator(ds, runQuery, deserializer)
+  def getIterator: QueryIterator[U with EntityBacker[U, E], E] = QueryIterator(ds, runQuery){ (ds, reader) =>
+    deserializer.deserialize(ds, reader)
+  }
 
   def mapIterator[T](f: (DS, ObjectReader) => T): QueryIterator[T, E] = {
 

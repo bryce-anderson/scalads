@@ -6,15 +6,14 @@ import scala.language.experimental.macros
 import scala.collection.JavaConverters._
 
 import scalads.AbstractDatastore
-import scalads.readers.ObjectReader
 import scalads.writers.Writer
-import scalads.core.EntityBacker
 import scalads.appengine.readers.GAEObjectReader
 import scalads.appengine.writers.GAEWriter
 
 import com.google.appengine.api.datastore.{Entity, Key,
                       DatastoreServiceFactory, DatastoreService, Query => GQuery}
 import scala.reflect.ClassTag
+import scalads.macroimpls.EntityMaker
 
 /**
  * @author Bryce Anderson
@@ -48,9 +47,15 @@ class GAEDatastore(val svc: DatastoreService) extends AbstractDatastore[Key, Ent
     putEntity(writer.result)
   }
 
-  def mapQuery[U](clazz: ClassTag[U])(f: (AbstractDatastore[_, Entity], ObjectReader) => U with EntityBacker[U, Entity]): GAEQuery[U] = {
-    new GAEQuery[U](self, new GQuery(clazz.runtimeClass.getName), f)
+  def query[U](implicit clazz: ClassTag[U], entityMaker: EntityMaker[U, Entity]): QueryType[U] = {
+    new GAEQuery[U](self, new GQuery(clazz.runtimeClass.getName), entityMaker)
   }
+
+//
+//  def mapQuery[U](clazz: ClassTag[U])(f: (AbstractDatastore[_, Entity], ObjectReader) => U with EntityBacker[U, Entity]): GAEQuery[U] = {
+//    new GAEQuery[U](self, new GQuery(clazz.runtimeClass.getName), f)
+//  }
+
 }
 
 object GAEDatastore {
