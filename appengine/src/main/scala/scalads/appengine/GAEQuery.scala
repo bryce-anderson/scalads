@@ -29,6 +29,8 @@ class GAEQuery[U](val ds: GAEDatastore,
         private var gQuery: GQuery)
             extends Query[U, GEntity] { self =>
 
+  type Repr = GAEQuery[U]
+
   private var fetchOptions = FetchOptions.Builder.withDefaults()
 
 
@@ -52,7 +54,7 @@ class GAEQuery[U](val ds: GAEDatastore,
     result
   }
 
-  def setFilter(filter: Filter): this.type = {
+  def setFilter(filter: Filter): Repr = {
 
     def walk(f: Filter): GFilter = f match {
       case f: SingleFilter =>
@@ -74,14 +76,14 @@ class GAEQuery[U](val ds: GAEDatastore,
     self
   }
 
-  def withParent(key: Key): this.type = {
+  def withParent(key: Key): Repr = {
     gQuery = gQuery.setAncestor(key)
     self
   }
 
   private var projections: List[Projection] = Nil
 
-  def addProjection(proj: Projection): this.type = {
+  def addProjection(proj: Projection): Repr = {
     if (!projections.contains(proj)) {
       projections = proj::projections
       gQuery = gQuery.addProjection(new PropertyProjection(proj.path.mkString("."),
@@ -90,7 +92,7 @@ class GAEQuery[U](val ds: GAEDatastore,
     self
   }
 
-  def sortBy(field: String, dir: core.SortDirection): this.type = {
+  def sortBy(field: String, dir: core.SortDirection): Repr = {
     import core.{SortDirection => SDir}
     gQuery = gQuery.addSort(field, dir match {
       case SDir.ASC => SortDirection.ASCENDING

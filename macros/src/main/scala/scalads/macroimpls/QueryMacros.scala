@@ -63,7 +63,8 @@ object QueryMacros {
     result
   }
 
-  def sortImplGeneric[U: c.WeakTypeTag](c: Context {type PrefixType = Query[U, _]})(f: c.Expr[U => Any], dir: c.Expr[SortDirection]) = {
+  def sortImplGeneric[U: c.WeakTypeTag, Repr <: Query[U, _]](c: Context {type PrefixType = Repr})
+                   (f: c.Expr[U => Any], dir: c.Expr[SortDirection]): c.Expr[Repr#Repr] = {
     val queryHelpers = new QueryMacroHelpers[c.type](c)
     import queryHelpers.findName
 
@@ -76,17 +77,17 @@ object QueryMacros {
     result
   }
 
-  def sortImplAsc[U: c.WeakTypeTag](c: Context {type PrefixType = Query[U, _]})(f: c.Expr[U => Any]) = {
+  def sortImplAsc[U: c.WeakTypeTag, Repr <: Query[U, _]](c: Context {type PrefixType = Repr})(f: c.Expr[U => Any]): c.Expr[Repr#Repr] = {
     import c.universe._
-    sortImplGeneric(c)(f, reify(SortDirection.ASC))
+    sortImplGeneric[U, Repr](c)(f, reify(SortDirection.ASC))
   }
 
-  def sortImplDesc[U: c.WeakTypeTag](c: Context {type PrefixType = Query[U, _]})(f: c.Expr[U => Any]) = {
+  def sortImplDesc[U: c.WeakTypeTag, Repr <: Query[U, _]](c: Context {type PrefixType = Repr})(f: c.Expr[U => Any]): c.Expr[Repr#Repr] = {
     import c.universe._
-    sortImplGeneric(c)(f, reify(SortDirection.DSC))
+    sortImplGeneric[U, Repr](c)(f, reify(SortDirection.DSC))
   }
 
-  def filterImpl[U: c.WeakTypeTag](c: Context {type PrefixType = Query[U, _]})(f: c.Expr[U => Boolean]) = {
+  def filterImpl[U: c.WeakTypeTag, Repr <: Query[U, _]](c: Context {type PrefixType = Repr})(f: c.Expr[U => Boolean]): c.Expr[Repr#Repr] = {
     val helpers = new macrohelpers.MacroHelpers[c.type](c)
     import helpers.mkStringList
 

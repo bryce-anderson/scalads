@@ -14,19 +14,21 @@ import scalads.readers.ObjectReader
 
 trait Query[U, E] { self =>
 
+  type Repr <: Query[U, E]
+
   type DS = AbstractDatastore[_, E]
 
   def ds: DS
 
-  def setFilter(filter: Filter): this.type
+  def setFilter(filter: Filter): Repr
 
-  def sortBy(field: String, dir: SortDirection): this.type
+  def sortBy(field: String, dir: SortDirection): Repr
 
-  def addProjection(proj: Projection): this.type
+  def addProjection(proj: Projection): Repr
 
   def runQuery: Iterator[E]
 
-  def limit(size: Int): this.type
+  def limit(size: Int): Repr
 
   def getIterator(implicit deserializer: EntityBuilder[U, E]): QueryIterator[U with EntityBacker[U, E], E] = QueryIterator(ds, runQuery){ (ds, reader) =>
     deserializer.deserialize(ds, reader)
@@ -48,10 +50,10 @@ trait Query[U, E] { self =>
 
   def project[R](f: U => R): QueryIterator[R, E] =     macro QueryMacros.project[U, R, E]
 
-  def sortAsc(f: U => Any) =                           macro QueryMacros.sortImplAsc[U]
+  def sortAsc(f: U => Any): Repr =                     macro QueryMacros.sortImplAsc[U, Repr]
 
-  def sortDec(f: U => Any) =                           macro QueryMacros.sortImplDesc[U]
+  def sortDec(f: U => Any): Repr =                     macro QueryMacros.sortImplDesc[U, Repr]
 
-  def filter(f: U => Boolean)  =                       macro QueryMacros.filterImpl[U]
+  def filter(f: U => Boolean): Repr  =                 macro QueryMacros.filterImpl[U, Repr]
 }
 
