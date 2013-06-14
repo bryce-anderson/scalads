@@ -28,8 +28,6 @@ object QueryMacros {
 
     val Function(List(ValDef(_, name, _, _)), body) = f.tree
 
-
-
     var projections = new ListBuffer[(List[String], Type)]
 
     val splicer = new Transformer {
@@ -61,7 +59,6 @@ object QueryMacros {
     val result = reify {
       qExpr.splice.mapIterator( reader => bodyTree.splice)
     }
-
     //println(s"Projection: $result")
     result
   }

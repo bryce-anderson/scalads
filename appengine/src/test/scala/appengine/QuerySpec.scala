@@ -25,13 +25,13 @@ class QuerySpec extends GAESpecTemplate  {
   case class Compound(in: Int, in2: Test)
   case class Types(in1: Int, in2: Long, in3: Float, in4: Double, in5: String, in6: Date)
 
-  "Query" should "do filters"  in {
+  "Query"  should "compile filters"  in {
     val query = ds.query[Test]
         .filter{ bryce => bryce.in2 > "sweet"
     }
 
     query.filter { bryce =>
-      "sweet" < bryce.in2 // bryce.in > 0 && bryce.in < -1 ||
+      "sweet" < bryce.in2
     }
 
     query.filter(_.in2 < "sweet")
@@ -168,20 +168,18 @@ class QuerySpec extends GAESpecTemplate  {
     result1._2 should equal(comp.comp2.in2.in*12)
   }
 
-//  "Datastore" should "put java collections in the datastore" in {
-//    import com.google.appengine.api.datastore.Entity
-//    import com.google.appengine.api.datastore.EmbeddedEntity
-//    import scala.collection.convert.WrapAsJava.asJavaCollection
-//
-//    val emb = new EmbeddedEntity()
-//    emb.setProperty("cool", 5)
-//
-//    val a = asJavaCollection(emb::1::"cat"::Nil)  // This is serializable
-//
-//    val e = new Entity("test")
-//    e.setProperty("lst", a)
-//
-//    val lst = e.getProperty("lst").asInstanceOf[java.util.Collection[Any]]
-//    lst.iterator().next().asInstanceOf[EmbeddedEntity].getProperty("cool") should equal (5)
-//  }
+  it should "allow intermediate lists" in {
+    case class WithList(number: Int, list: List[Int])
+    val wl = WithList(1, 1::2::3::Nil)
+    ds.put(wl)
+
+    val result1 =  ds.query[WithList]
+      .project{ i =>
+      val lst = i.list
+      (lst.head, lst.tail)
+    }.next()
+
+    result1._1 should equal(1)
+    result1._2 should equal(2::3::Nil)
+  }
 }

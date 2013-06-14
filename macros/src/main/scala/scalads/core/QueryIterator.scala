@@ -3,7 +3,7 @@ package core
 
 
 import scalads.readers.ObjectReader
-import scalads.macroimpls.EntityMaker
+import scalads.macroimpls.EntityBuilder
 
 /**
  * @author Bryce Anderson

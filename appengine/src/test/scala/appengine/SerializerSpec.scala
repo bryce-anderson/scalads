@@ -53,9 +53,6 @@ class SerializerSpec extends GAESpecTemplate {
     macroimpls.Serializer.serialize(a, writer)
     val entity = writer.result
 
-    println(entity)
-    println(Simple.getClass)
-
     val ds = DatastoreServiceFactory.getDatastoreService()
     val txn = ds.beginTransaction()
     try {

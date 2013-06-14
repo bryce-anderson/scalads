@@ -5,7 +5,7 @@ import scala.reflect.macros.Context
 
 import scala.collection.mutable.ListBuffer
 import scalads.readers.ObjectReader
-import scalads.macroimpls.{EntitySerializer, EntityMaker, Serializer}
+import scalads.macroimpls.{EntitySerializer, EntityBuilder, Serializer}
 
 
 import scalads.core._
@@ -19,6 +19,17 @@ import scala.reflect.ClassTag
 trait AbstractDatastore[Key >: Null, Entity] { self =>
 
   type QueryType[U] <: Query[U, Entity]
+
+  def newReader(entity: Entity): ObjectReader
+
+  def newWriter(entity: Entity): Writer[Entity]
+
+  def putEntity(entity: Entity): Key
+
+  // Takes a method that will operate on the writer
+  def putRaw(tpe: ClassTag[_], parent: Key)( f: Writer[Any] => Unit): Key
+
+  def query[U](implicit clazz: ClassTag[U]): QueryType[U]
 
   def withTransaction[U](f: => U): U
 
@@ -42,26 +53,15 @@ trait AbstractDatastore[Key >: Null, Entity] { self =>
     putEntity(obj.ds_entity)
   }
 
-  def newReader(entity: Entity): ObjectReader
-
-  def newWriter(entity: Entity): Writer[Entity]
-
-  def put(entities: Iterable[Entity]): Unit
-
-  def putEntity(entity: Entity): Key
-
-  // Takes a method that will operate on the writer
-  def putRaw(tpe: ClassTag[_], parent: Key)( f: Writer[Any] => Unit): Key
-
-  def query[U](implicit clazz: ClassTag[U], entityMaker: EntityMaker[U, Entity]): QueryType[U]
+  /** Places the collection of Entities into the data store
+    *
+    * @param entities The Iterable[Entity] to be persisted
+    */
+  def put(entities: Iterable[Entity]): Unit = entities.foreach(putEntity)
 
   def put[U: EntitySerializer: ClassTag](obj: U, parent: Key = null): Key = {
     putRaw(implicitly[ClassTag[U]], parent)( writer =>
       implicitly[EntitySerializer[U]].serialize(obj, writer)
     )
   }
-}
-
-object AbstractDatastore {
-
 }

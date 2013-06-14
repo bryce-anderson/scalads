@@ -3,7 +3,7 @@ package core
 
 import language.experimental.macros
 
-import scalads.macroimpls.{EntityMaker, QueryMacros}
+import scalads.macroimpls.{EntityBuilder, QueryMacros}
 import scalads.AbstractDatastore
 import scalads.readers.ObjectReader
 
@@ -22,15 +22,13 @@ trait Query[U, E] { self =>
 
   def sortBy(field: String, dir: SortDirection): this.type
 
-  def addProjection(proj: Projection): self.type
+  def addProjection(proj: Projection): this.type
 
   def runQuery: Iterator[E]
 
-  def deserializer: EntityMaker[U, E]
-
   def limit(size: Int): this.type
 
-  def getIterator: QueryIterator[U with EntityBacker[U, E], E] = QueryIterator(ds, runQuery){ (ds, reader) =>
+  def getIterator(implicit deserializer: EntityBuilder[U, E]): QueryIterator[U with EntityBacker[U, E], E] = QueryIterator(ds, runQuery){ (ds, reader) =>
     deserializer.deserialize(ds, reader)
   }
 

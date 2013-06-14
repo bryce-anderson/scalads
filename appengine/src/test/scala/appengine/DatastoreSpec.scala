@@ -8,8 +8,6 @@ import com.google.appengine.api.datastore.Entity
  *         Created on 6/2/13
  */
 
-import scalads._
-
 class DatastoreSpec extends GAESpecTemplate {
 
   val ds = GAEDatastore.getDatastoreService()
@@ -50,7 +48,7 @@ class DatastoreSpec extends GAESpecTemplate {
     val t3 = Test(2, "key")
     val parent = ds.putEntity(t1)
 
-    ds.putWithParent(t2, parent)
+    ds.put(t2, parent)
     ds.put(t3)
 
     ds.query[Test].withParent(parent)

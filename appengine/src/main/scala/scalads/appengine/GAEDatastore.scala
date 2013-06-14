@@ -13,7 +13,7 @@ import scalads.appengine.writers.GAEWriter
 import com.google.appengine.api.datastore.{Entity, Key,
                       DatastoreServiceFactory, DatastoreService, Query => GQuery}
 import scala.reflect.ClassTag
-import scalads.macroimpls.EntityMaker
+import scalads.macroimpls.EntityBuilder
 
 /**
  * @author Bryce Anderson
@@ -35,9 +35,7 @@ class GAEDatastore(val svc: DatastoreService) extends AbstractDatastore[Key, Ent
 
   def newWriter(entity: Entity) = new GAEWriter(entity)
 
-  def put(entities: Iterable[Entity]) { svc.put(entities.asJava) }
-
-  def putWithParent[U](obj: U, key: Key)(implicit clazz: ClassTag[U]) = macro GAEDatastore.putWithParent[U]
+  override def put(entities: Iterable[Entity]) { svc.put(entities.asJava) }
 
   def putEntity(entity: Entity): Key = svc.put(entity)
 
@@ -47,29 +45,13 @@ class GAEDatastore(val svc: DatastoreService) extends AbstractDatastore[Key, Ent
     putEntity(writer.result)
   }
 
-  def query[U](implicit clazz: ClassTag[U], entityMaker: EntityMaker[U, Entity]): QueryType[U] = {
-    new GAEQuery[U](self, new GQuery(clazz.runtimeClass.getName), entityMaker)
+  def query[U](implicit clazz: ClassTag[U]): QueryType[U] = {
+    new GAEQuery[U](self, new GQuery(clazz.runtimeClass.getName))
   }
-
-//
-//  def mapQuery[U](clazz: ClassTag[U])(f: (AbstractDatastore[_, Entity], ObjectReader) => U with EntityBacker[U, Entity]): GAEQuery[U] = {
-//    new GAEQuery[U](self, new GQuery(clazz.runtimeClass.getName), f)
-//  }
 
 }
 
 object GAEDatastore {
   def getDatastoreService() = new GAEDatastore(DatastoreServiceFactory.getDatastoreService)
 
-  def putWithParent[U: c.WeakTypeTag](c: Context { type PrefixType = GAEDatastore})
-                   (obj: c.Expr[U], key: c.Expr[Key])(clazz: c.Expr[ClassTag[U]]): c.Expr[Unit] = {
-    import c.universe._
-    import scalads.macroimpls.Serializer.serializeImpl
-
-
-    val deserializer = serializeImpl(c)(obj, c.Expr[Writer[Entity]](Ident(newTermName("writer"))))
-    reify {
-      c.prefix.splice.putRaw(clazz.splice, key.splice)( writer => deserializer.splice)
-    }
-  }
 }

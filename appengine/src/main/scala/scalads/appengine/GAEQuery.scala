@@ -18,7 +18,7 @@ import scala.collection.JavaConverters._
 
 import scalads.core.{EntityBacker, Query, Operation,
         CompositeFilter, Projection, JoinOperation, Filter, SingleFilter}
-import scalads.macroimpls.EntityMaker
+import scalads.macroimpls.EntityBuilder
 
 /**
  * @author Bryce Anderson
@@ -26,8 +26,7 @@ import scalads.macroimpls.EntityMaker
  */
 
 class GAEQuery[U](val ds: GAEDatastore,
-        private var gQuery: GQuery,
-        val deserializer: EntityMaker[U, Entity])
+        private var gQuery: GQuery)
             extends Query[U, GEntity] { self =>
 
   private var fetchOptions = FetchOptions.Builder.withDefaults()
@@ -50,7 +49,6 @@ class GAEQuery[U](val ds: GAEDatastore,
 
   def runQuery = {
     val result = ds.svc.prepare(gQuery).asQueryResultIterator(fetchOptions).asScala
-    println(s"Result: $result")
     result
   }
 

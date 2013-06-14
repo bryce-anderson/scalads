@@ -75,14 +75,19 @@ for(p <- it) println(s"Hello ${p.name}. You are older than 21")
 val ds = Datastore.getDatastoreService()
 
 case class Person(name: String, age: Int)
-val favoriteNumber = 7
+case class Team(teamName: String, person1: Person, person2: Person)
 
-val it = ds.query[Person]
-    .filter(p => p.age > 21)
-    .sortAsc(_.age)       // Shortcut for .sortAsc(p => p.age)
-    .project(p => (p.name, favoriteNumber))
+val team = Team("cool", Person("Bill", 12), Person("Jane", 11))
+ds.put(team)
 
-for(p <- it) println(s"Hello ${p._1}. You get a favorite number: ${p._2}")
+val it = ds.query[Team]
+  .sortAsc(_.teamName)       // Shortcut for .sortAsc(p => p.age)
+  .project{ t =>
+  val p1 = t.person1
+  (t.teamName, p1.name)
+}
+
+for(p <- it) println(s"Hello ${p._2}. You are on team ${p._1}")
 
 ```
 

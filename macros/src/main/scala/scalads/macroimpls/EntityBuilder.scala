@@ -11,21 +11,21 @@ import scala.reflect.macros.Context
  * @author Bryce Anderson
  *         Created on 6/14/13
  */
-trait EntityMaker[U, E] {
+trait EntityBuilder[U, E] {
   def deserialize(ds: AbstractDatastore[_, E], reader: ObjectReader): U with EntityBacker[U, E]
 }
 
-object EntityMaker {
-  implicit def getEntityMaker[U, E]: EntityMaker[U, E] = macro impl[U, E]
+object EntityBuilder {
+  implicit def getEntityMaker[U, E]: EntityBuilder[U, E] = macro getEntityMakerImpl[U, E]
 
-  def impl[U: c.WeakTypeTag, E: c.WeakTypeTag](c: Context): c.Expr[EntityMaker[U, E]] = {
+  def getEntityMakerImpl[U: c.WeakTypeTag, E: c.WeakTypeTag](c: Context): c.Expr[EntityBuilder[U, E]] = {
     import c.universe._
     val deserializeExpr = macroimpls.EntityDeserializer.extendWithEntityBacker[U, E](c)(
       c.Expr[AbstractDatastore[_, E]](Ident(newTermName("ds"))),
       c.Expr[ObjectReader](Ident(newTermName("reader")))
     )
 
-    val result = reify ( new EntityMaker[U, E] {
+    val result = reify ( new EntityBuilder[U, E] {
       def deserialize(ds: AbstractDatastore[_, E], reader: ObjectReader): U with EntityBacker[U, E] = {
         deserializeExpr.splice
       }

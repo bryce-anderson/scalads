@@ -62,7 +62,6 @@ class QueryMacroHelpers[CONTEXT <: Context](val c: CONTEXT) {
         } else { getStacks(tpe, pSym.name.decoded::stack) }
       }
     }
-    println(tpe)
     getStacks(tpe, Nil)
   }
 
