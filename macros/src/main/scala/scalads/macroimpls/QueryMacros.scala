@@ -16,12 +16,11 @@ import scala.collection.mutable.ListBuffer
  */
 
 
+class QueryMacroHelpers[CONTEXT <: Context](val c: CONTEXT) {
+  import c.universe._
+  def findName(tree: Tree, name: Name) = findPath(tree, name).mkString(".")
 
-object QueryMacros {
-
-  def findName(c: Context)(tree: c.Tree, name: c.Name) = findPath(c)(tree, name).mkString(".")
-
-  def findPath(c: Context)(tree: c.Tree, name: c.Name): List[String] = {
+  def findPath(tree: Tree, name: Name): List[String] = {
     import c.universe._
     def findName(tree: Tree, stack: List[String]): List[String] = tree match {
       case Select(Ident(inName), otherTree) if inName == name => otherTree.decoded::stack // Finished
@@ -31,46 +30,81 @@ object QueryMacros {
     findName(tree, Nil)
   }
 
+  /** Walks the type tree to find the type of the param specified by the path stack
+    *
+    * @param tpe    The Type which represents the type you intend to walk
+    * @param stack  List of strings which specifies the path to walk
+    * @return       The final Type of the param specified by stack
+    */
+  def getType(tpe: Type, stack: List[String]): Option[Type] = {
+    val TypeRef(_, sym: Symbol, tpeArgs: List[Type]) = tpe
+    stack.foldLeft[Option[Type]](Some(tpe)){ (t, n) =>
+      t.flatMap(_.member(nme.CONSTRUCTOR).asMethod.paramss
+        .flatten.find(_.name.decoded == n)
+        .map(_.typeSignature.substituteTypes(sym.asClass.typeParams, tpeArgs)))
+    }
+  }
+
+  def findNameOption(tree: Tree, name: Name, rootTpe: Type): Option[(List[String], Type)] = {
+    def findNameOption(tree: Tree, stack: List[String]): Option[(List[String], Type)] = tree match {
+      case Select(Ident(inName), otherTree) if inName == name =>
+        val fullStack = otherTree.decoded::stack
+        getType(rootTpe, fullStack).map((fullStack, _))
+      case Select(Ident(inName), otherTree) if inName != name => None
+      case Select(inner, outer) => findNameOption(inner, outer.encoded::stack)
+      case _ => None
+    }
+    findNameOption(tree, Nil)
+  }
+
+  def getStacks(tpe: Type): List[(List[String], Type)]  = {
+    val helpers = new macrohelpers.MacroHelpers[c.type](c)
+    def getStacks(tpe: Type, stack: List[String]): List[(List[String], Type)] = {
+      val TypeRef(_, sym: Symbol, tpeArgs: List[Type]) = tpe
+      tpe.member(nme.CONSTRUCTOR).asMethod.paramss.flatten.flatMap { pSym =>
+        val tpe = pSym.typeSignature.substituteTypes(sym.asClass.typeParams, tpeArgs)
+        if (helpers.isPrimitive(tpe)) {
+          List(((pSym.name.decoded::stack).reverse, tpe))
+        } else { getStacks(tpe, pSym.name.decoded::stack) }
+      }
+    }
+    println(tpe)
+    getStacks(tpe, Nil)
+  }
+}
+
+
+
+object QueryMacros {
+
   def project[U: c.WeakTypeTag, R, E](c: Context { type PrefixType = Query[U, E]})(f: c.Expr[U => R]): c.Expr[QueryIterator[R, E]] = {
     val helpers = new macrohelpers.MacroHelpers[c.type](c)
     import helpers.mkStringList
 
+    val queryHelpers = new QueryMacroHelpers[c.type](c)
+    import queryHelpers.findNameOption
+
+    val deserializers = new DeserializerBase[c.type](c)
+    import deserializers.reifyObject
+
     import c.universe._
 
     val Function(List(ValDef(_, name, _, _)), body) = f.tree
-    val tpe = weakTypeOf[U]
-
-    def getType(stack: List[String]): Option[Type] = {
-      stack.foldLeft[Option[Type]](Some(tpe)){ (t, n) =>
-        t.flatMap(_.member(nme.CONSTRUCTOR).asMethod.paramss.flatten.find(_.name.decoded == n).map(_.typeSignature))
-      }
-    }
-
-    def findNameOption(tree: Tree): Option[(List[String], Type)] = {
-      def findNameOption(tree: Tree, stack: List[String]): Option[(List[String], Type)] = tree match {
-        case Select(Ident(inName), otherTree) if inName == name =>
-          val fullStack = otherTree.decoded::stack
-          getType(fullStack).map((fullStack, _))
-        case Select(Ident(inName), otherTree) if inName != name => None
-        case Select(inner, outer) => findNameOption(inner, outer.encoded::stack)
-        case _ => None
-      }
-      findNameOption(tree, Nil)
-    }
 
     def pathReader(reader: c.Expr[ObjectReader], stack: List[String]): (c.Expr[ObjectReader], String) = stack match {
       case str::Nil => (reader, str)
-      case h::t =>  val name = c.literal(h); pathReader(reify(reader.splice.getObjectReader(name.splice)), t)
+      case h::t =>
+        val name = c.literal(h)
+        pathReader(reify(reader.splice.getObjectReader(name.splice)), t)
     }
 
     var projections = new ListBuffer[(List[String], Type)]
 
     val splicer = new Transformer {
-
       override def transform(tree: Tree): Tree = {
-        findNameOption(tree) match {
+        findNameOption(tree, name, weakTypeOf[U]) match {
           case Some((stack, tpe)) =>
-            projections += ((stack, tpe))
+            if (helpers.isPrimitive(tpe)) { projections += ((stack, tpe)) }
             val (readerExpr, key) = pathReader(c.Expr[ObjectReader](Ident(newTermName("reader"))), stack)
 
             // Deal with the projection
@@ -82,6 +116,12 @@ object QueryMacros {
               case tpe if tpe =:= typeOf[Double] || tpe=:= typeOf[java.lang.Double] => reify{readerExpr.splice.getDouble(nameExpr.splice)}.tree
               case tpe if tpe =:= typeOf[String] => reify{readerExpr.splice.getString(nameExpr.splice)}.tree
               case tpe if tpe =:= typeOf[java.util.Date] => reify{readerExpr.splice.getDate(nameExpr.splice)}.tree
+              case tpe => // It is a complex type. Need to to instance it.
+                val stacks = queryHelpers.getStacks(tpe)
+                stacks.foreach{i =>
+                  projections += ((key::i._1, i._2))
+                }
+                reifyObject(tpe, reify {readerExpr.splice.getObjectReader(nameExpr.splice)})
             }
             resultTree
 
@@ -107,10 +147,13 @@ object QueryMacros {
   }
 
   def sortImplGeneric[U: c.WeakTypeTag](c: Context {type PrefixType = Query[U, _]})(f: c.Expr[U => Any], dir: c.Expr[SortDirection]) = {
+    val queryHelpers = new QueryMacroHelpers[c.type](c)
+    import queryHelpers.findName
+
     import c.universe._
 
     val Function(List(ValDef(_, name, _, _)), body) = f.tree
-    val nameStr = c.literal(findName(c)(body, name))
+    val nameStr = c.literal(findName(body, name))
 
     val result = reify(c.prefix.splice.sortBy(nameStr.splice, dir.splice))
     result
@@ -130,13 +173,15 @@ object QueryMacros {
     val helpers = new macrohelpers.MacroHelpers[c.type](c)
     import helpers.mkStringList
 
+    val queryHelpers = new QueryMacroHelpers[c.type](c)
+    import queryHelpers.findPath
+
     import c.universe._
 
     val Function(List(ValDef(_, name, _, _)), body) = f.tree
 
     body match { // Make things simple
-      case Block(_, _) => c.error(c.enclosingPosition,
-                          s"Filter must have single statement filter. Received: $body")
+      case Block(_, _) => c.error(c.enclosingPosition, s"Filter must have single statement filter. Received: $body")
       case _ =>
     }
 
@@ -161,6 +206,7 @@ object QueryMacros {
       case _ => sys.error("Failed to find operator")
     }
 
+    // TODO: Can this be cleaned up substantially? It seems a bit clunky
     def decompose(tree: Tree): c.Expr[Filter] = try { tree match {
       case Apply(Select(Apply(Select(Select(This(scalaTypeName), pName), augName), List(tree1)),operator),tree2) if (
         scalaTypeName == newTypeName("scala") &&
@@ -172,9 +218,9 @@ object QueryMacros {
         makeComposite(decompose(t1), decompose(t2), operator)
 
       case Apply(Select(firstTree, operation), List(secondTree)) =>
-        try { makeFilter(operation, findPath(c)(firstTree, name), secondTree) } catch {
+        try { makeFilter(operation, findPath(firstTree, name), secondTree) } catch {
           // Try it backwards in case they did something like '4 == foo.bar'
-          case e: MatchError => makeFilter(operation, findPath(c)(secondTree, name), firstTree)
+          case e: MatchError => makeFilter(operation, findPath(secondTree, name), firstTree)
         }
     } } catch {
       case e: MatchError => c.error(c.enclosingPosition, s"Cannot decompose operation the operation: $tree"); sys.error("")
@@ -182,7 +228,7 @@ object QueryMacros {
 
     val filter = decompose(body)
     //println(s"------------------Body:\n${showRaw(body)}")
-    println(s"----------------- Decomposed:\n${filter.tree}")
+    //println(s"----------------- Decomposed:\n${filter.tree}")
 
     reify{c.prefix.splice.setFilter(filter.splice)}
   }

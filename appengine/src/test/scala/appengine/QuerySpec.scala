@@ -10,7 +10,7 @@ import scalads.appengine.GAEDatastore
  * @author Bryce Anderson
  *         Created on 5/30/13
  */
-class QuerySpec extends GAESpecTemplate {
+class QuerySpec extends GAESpecTemplate  {
 
   val ds = GAEDatastore.getDatastoreService()
 
@@ -21,7 +21,7 @@ class QuerySpec extends GAESpecTemplate {
     }
   }
 
-  case class Test(in: Int, in2: String)
+  case class  Test(in: Int, in2: String)
   case class Compound(in: Int, in2: Test)
   case class Types(in1: Int, in2: Long, in3: Float, in4: Double, in5: String, in6: Date)
 
@@ -151,6 +151,20 @@ class QuerySpec extends GAESpecTemplate {
 
     result2._1 should equal(comp.in)
     result2._2 should equal(comp.in2.in*34)
+  }
+
+  it should "allow intermediate objects" in {
+    val comp = Compound(1, Test(1, "one"))
+    ds.put(comp)
+
+    val result1 = ds.query[Compound]
+      .project{ i =>
+      val a: Test = i.in2
+      (i.in, a.in*12)
+      }.next()
+
+    result1._1 should equal(comp.in)
+    result1._2 should equal(comp.in2.in*12)
   }
 
 //  "Datastore" should "put java collections in the datastore" in {
