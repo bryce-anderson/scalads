@@ -9,70 +9,7 @@ import scalads.core._
 import scalads.readers.ObjectReader
 import scalads.core.Filter
 import scala.collection.mutable.ListBuffer
-
-/**
- * @author Bryce Anderson
- *         Created on 5/30/13
- */
-
-
-class QueryMacroHelpers[CONTEXT <: Context](val c: CONTEXT) {
-  import c.universe._
-  def findName(tree: Tree, name: Name) = findPath(tree, name).mkString(".")
-
-  def findPath(tree: Tree, name: Name): List[String] = {
-    import c.universe._
-    def findName(tree: Tree, stack: List[String]): List[String] = tree match {
-      case Select(Ident(inName), otherTree) if inName == name => otherTree.decoded::stack // Finished
-      case Select(Ident(inName), otherTree) if inName != name => throw new MatchError(tree)
-      case Select(inner, outer) => findName(inner, outer.encoded::stack)
-    }
-    findName(tree, Nil)
-  }
-
-  /** Walks the type tree to find the type of the param specified by the path stack
-    *
-    * @param tpe    The Type which represents the type you intend to walk
-    * @param stack  List of strings which specifies the path to walk
-    * @return       The final Type of the param specified by stack
-    */
-  def getType(tpe: Type, stack: List[String]): Option[Type] = {
-    val TypeRef(_, sym: Symbol, tpeArgs: List[Type]) = tpe
-    stack.foldLeft[Option[Type]](Some(tpe)){ (t, n) =>
-      t.flatMap(_.member(nme.CONSTRUCTOR).asMethod.paramss
-        .flatten.find(_.name.decoded == n)
-        .map(_.typeSignature.substituteTypes(sym.asClass.typeParams, tpeArgs)))
-    }
-  }
-
-  def findNameOption(tree: Tree, name: Name, rootTpe: Type): Option[(List[String], Type)] = {
-    def findNameOption(tree: Tree, stack: List[String]): Option[(List[String], Type)] = tree match {
-      case Select(Ident(inName), otherTree) if inName == name =>
-        val fullStack = otherTree.decoded::stack
-        getType(rootTpe, fullStack).map((fullStack, _))
-      case Select(Ident(inName), otherTree) if inName != name => None
-      case Select(inner, outer) => findNameOption(inner, outer.encoded::stack)
-      case _ => None
-    }
-    findNameOption(tree, Nil)
-  }
-
-  def getStacks(tpe: Type): List[(List[String], Type)]  = {
-    val helpers = new macrohelpers.MacroHelpers[c.type](c)
-    def getStacks(tpe: Type, stack: List[String]): List[(List[String], Type)] = {
-      val TypeRef(_, sym: Symbol, tpeArgs: List[Type]) = tpe
-      tpe.member(nme.CONSTRUCTOR).asMethod.paramss.flatten.flatMap { pSym =>
-        val tpe = pSym.typeSignature.substituteTypes(sym.asClass.typeParams, tpeArgs)
-        if (helpers.isPrimitive(tpe)) {
-          List(((pSym.name.decoded::stack).reverse, tpe))
-        } else { getStacks(tpe, pSym.name.decoded::stack) }
-      }
-    }
-    println(tpe)
-    getStacks(tpe, Nil)
-  }
-}
-
+import scalads.macroimpls.macrohelpers.QueryMacroHelpers
 
 
 object QueryMacros {
@@ -82,21 +19,16 @@ object QueryMacros {
     import helpers.mkStringList
 
     val queryHelpers = new QueryMacroHelpers[c.type](c)
-    import queryHelpers.findNameOption
+    import queryHelpers.{findNameOption, getReaderAndName}
 
     val deserializers = new DeserializerBase[c.type](c)
-    import deserializers.reifyObject
+    import deserializers.buildField
 
     import c.universe._
 
     val Function(List(ValDef(_, name, _, _)), body) = f.tree
 
-    def pathReader(reader: c.Expr[ObjectReader], stack: List[String]): (c.Expr[ObjectReader], String) = stack match {
-      case str::Nil => (reader, str)
-      case h::t =>
-        val name = c.literal(h)
-        pathReader(reify(reader.splice.getObjectReader(name.splice)), t)
-    }
+
 
     var projections = new ListBuffer[(List[String], Type)]
 
@@ -104,26 +36,14 @@ object QueryMacros {
       override def transform(tree: Tree): Tree = {
         findNameOption(tree, name, weakTypeOf[U]) match {
           case Some((stack, tpe)) =>
+            // Add the projections
             if (helpers.isPrimitive(tpe)) { projections += ((stack, tpe)) }
-            val (readerExpr, key) = pathReader(c.Expr[ObjectReader](Ident(newTermName("reader"))), stack)
+            else queryHelpers.getPathStacks(tpe).foreach{i => projections += ((stack:::i._1, i._2)) }
 
-            // Deal with the projection
+          // Build the expression tree
+            val (readerExpr, key) = getReaderAndName(c.Expr[ObjectReader](Ident(newTermName("reader"))), stack)
             val nameExpr = c.literal(key)
-            val resultTree = tpe match {
-              case tpe if tpe =:= typeOf[Int] || tpe=:= typeOf[java.lang.Integer] => reify{readerExpr.splice.getInt(nameExpr.splice)}.tree
-              case tpe if tpe =:= typeOf[Long] || tpe=:= typeOf[java.lang.Long] => reify{readerExpr.splice.getLong(nameExpr.splice)}.tree
-              case tpe if tpe =:= typeOf[Float] || tpe=:= typeOf[java.lang.Float] => reify{readerExpr.splice.getFloat(nameExpr.splice)}.tree
-              case tpe if tpe =:= typeOf[Double] || tpe=:= typeOf[java.lang.Double] => reify{readerExpr.splice.getDouble(nameExpr.splice)}.tree
-              case tpe if tpe =:= typeOf[String] => reify{readerExpr.splice.getString(nameExpr.splice)}.tree
-              case tpe if tpe =:= typeOf[java.util.Date] => reify{readerExpr.splice.getDate(nameExpr.splice)}.tree
-              case tpe => // It is a complex type. Need to to instance it.
-                val stacks = queryHelpers.getStacks(tpe)
-                stacks.foreach{i =>
-                  projections += ((key::i._1, i._2))
-                }
-                reifyObject(tpe, reify {readerExpr.splice.getObjectReader(nameExpr.splice)})
-            }
-            resultTree
+            buildField(tpe, nameExpr, readerExpr)
 
           case None => super.transform(tree)
         }
@@ -174,7 +94,7 @@ object QueryMacros {
     import helpers.mkStringList
 
     val queryHelpers = new QueryMacroHelpers[c.type](c)
-    import queryHelpers.findPath
+    import queryHelpers.findPathStack
 
     import c.universe._
 
@@ -218,9 +138,9 @@ object QueryMacros {
         makeComposite(decompose(t1), decompose(t2), operator)
 
       case Apply(Select(firstTree, operation), List(secondTree)) =>
-        try { makeFilter(operation, findPath(firstTree, name), secondTree) } catch {
+        try { makeFilter(operation, findPathStack(firstTree, name), secondTree) } catch {
           // Try it backwards in case they did something like '4 == foo.bar'
-          case e: MatchError => makeFilter(operation, findPath(secondTree, name), firstTree)
+          case e: MatchError => makeFilter(operation, findPathStack(secondTree, name), firstTree)
         }
     } } catch {
       case e: MatchError => c.error(c.enclosingPosition, s"Cannot decompose operation the operation: $tree"); sys.error("")

@@ -25,19 +25,19 @@ class QuerySpec extends GAESpecTemplate  {
   case class Compound(in: Int, in2: Test)
   case class Types(in1: Int, in2: Long, in3: Float, in4: Double, in5: String, in6: Date)
 
-  "Query" should "do filters" in {
+  "Query" should "do filters"  in {
     val query = ds.query[Test]
         .filter{ bryce => bryce.in2 > "sweet"
     }
 
-    query.filter{ bryce =>
+    query.filter { bryce =>
       "sweet" < bryce.in2 // bryce.in > 0 && bryce.in < -1 ||
     }
 
     query.filter(_.in2 < "sweet")
   }
 
-  it should "deal with non constants" in {
+   it should "deal with non constants" in {
     val query = ds.query[Test]
     val test = Test(1, "two")
     query.filter{ bryce =>  bryce.in < test.in }
@@ -154,17 +154,18 @@ class QuerySpec extends GAESpecTemplate  {
   }
 
   it should "allow intermediate objects" in {
-    val comp = Compound(1, Test(1, "one"))
+    case class SComp(comp1: Int, comp2: Compound)
+    val comp = SComp(22, Compound(1, Test(1, "one")))
     ds.put(comp)
 
-    val result1 = ds.query[Compound]
+    val result1 =  ds.query[SComp]
       .project{ i =>
-      val a: Test = i.in2
-      (i.in, a.in*12)
+      val a: Test = i.comp2.in2
+      (i.comp2.in, a.in*12)
       }.next()
 
-    result1._1 should equal(comp.in)
-    result1._2 should equal(comp.in2.in*12)
+    result1._1 should equal(comp.comp2.in)
+    result1._2 should equal(comp.comp2.in2.in*12)
   }
 
 //  "Datastore" should "put java collections in the datastore" in {
