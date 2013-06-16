@@ -6,7 +6,7 @@ package scalads.mongodb.readers
  */
 
 import org.bson.{BasicBSONObject, BSONObject}
-import org.bson.types.BasicBSONList
+import org.bson.types.{Binary, BasicBSONList}
 import scalads.readers.{ArrayIterator, ObjectReader}
 import java.util.Date
 
@@ -22,16 +22,22 @@ object BsonReader {
   }
 }
 
-class BsonObjectReader(obj: BasicBSONObject) extends ObjectReader {
+class BsonObjectReader(obj:BSONObject) extends ObjectReader {
 
 
   type Entity = BSONObject
 
   def entity = obj
 
-  def optDate(key: String): Option[Date] =
+  def optDate(key: String): Option[Date] = obj.get(key) match {
+    case date: Date => Some(date)
+    case _ => None
+  }
 
-  def optBytes(key: String): Option[Array[Byte]] =
+  def optBytes(key: String): Option[Array[Byte]] = obj.get(key) match {
+    case bytes: Binary => Some(bytes.getData)
+    case _ => None
+  }
 
   lazy val getKeys: Set[String] = {
     import scala.collection.JavaConversions._
@@ -97,67 +103,76 @@ class BsonObjectReader(obj: BasicBSONObject) extends ObjectReader {
   }
 }
 
-class BsonIterator(lst: BasicBSONList) extends ArrayIterator {
+class BsonIterator(val entity: BasicBSONList) extends ArrayIterator {
 
-  private val it = lst.iterator()
+
+  type Entity = BasicBSONList
+
+  def nextDate: Date = next match {
+    case obj: Date => obj
+    case p => failStructure(s"Type ${p.getClass} isn't Date type")
+  }
+
+  private val it = entity.iterator()
 
   private def next = if (it.hasNext) it.next() else null
 
-  def getNextObjectReader: Option[ObjectReader] = next match {
-    case obj: BasicBSONObject => Some(new BsonObjectReader(obj))
-    case _ => None
+  def nextObjectReader: BsonObjectReader = next match {
+    case obj: BasicBSONObject => new BsonObjectReader(obj)
+    case p => failStructure(s"Type ${p.getClass} isn't BsonObject type")
   }
 
-  def getNextArrayReader: Option[ArrayIterator] = next match {
-    case it: BasicBSONList => Some(new BsonIterator(it))
-    case _ => None
+  def nextArrayReader: BsonIterator = next match {
+    case it: BasicBSONList => new BsonIterator(it)
+    case p => failStructure(s"Type ${p.getClass} isn't BsonIterator type")
   }
 
-  def getNextInt: Option[Int] = next match {
-    case i: Integer => Some(i.toInt)
-    case i: java.lang.Long => Some(i.toInt)
-    case _ => None
+  def nextInt: Int = next match {
+    case i: java.lang.Integer => i.toInt
+    case i: java.lang.Long => i.toInt
+    case p => failStructure(s"Type ${p.getClass} isn't Int type")
   }
 
-  def getNextLong: Option[Long] = next match {
-    case i: Integer => Some(i.toLong)
-    case i: java.lang.Long => Some(i.longValue())
-    case _ => None
+  def nextLong: Long = next match {
+    case i: java.lang.Integer => i.toLong
+    case i: java.lang.Long => i.longValue()
+    case p => failStructure(s"Type ${p.getClass} isn't Long type")
   }
 
-  def getNextFloat: Option[Float] = next match {
-    case i: java.lang.Float => Some(i.toFloat)
-    case i: java.lang.Double => Some(i.toFloat)
-    case _ => None
+  def nextFloat: Float = next match {
+    case i: java.lang.Float => i.toFloat
+    case i: java.lang.Double => i.toFloat
+    case p => failStructure(s"Type ${p.getClass} isn't Float type")
   }
 
-  def getNextDouble: Option[Double] = next match {
-    case i: java.lang.Float => Some(i.toDouble)
-    case i: java.lang.Double => Some(i.toDouble)
-    case _ => None
+  def nextDouble: Double = next match {
+    case i: java.lang.Float => i.toDouble
+    case i: java.lang.Double => i.toDouble
+    case p => failStructure(s"Type ${p.getClass} isn't Double type")
   }
 
-  def getNextBigInt: Option[BigInt] = next match {
-    case i: Integer => Some(BigInt(i))
-    case i: java.lang.Long => Some(BigInt(i))
-    case _ => None
+  def nextBigInt: BigInt = next match {
+    case i: java.lang.Integer => BigInt(i)
+    case i: java.lang.Long => BigInt(i)
+    case i: String => BigInt(i)
+    case p => failStructure(s"Type ${p.getClass} isn't BigInt type")
   }
 
-  def getNextBigDecimal: Option[BigDecimal] = next match {
-    case i: java.lang.Float => Some(BigDecimal(i.toDouble))
-    case i: java.lang.Double => Some(BigDecimal(i))
-    case _ => None
+  def nextBigDecimal: BigDecimal = next match {
+    case i: java.lang.Float => BigDecimal(i.toDouble)
+    case i: java.lang.Double => BigDecimal(i)
+    case i: String => BigDecimal(i)
+    case p => failStructure(s"Type ${p.getClass} isn't BigDecimal type")
   }
 
-  def getNextBool: Option[Boolean] = next match {
-    case b: java.lang.Boolean => Some(b.booleanValue())
-    case _ => None
+  def nextBool: Boolean = next match {
+    case b: java.lang.Boolean => b.booleanValue()
+    case p => failStructure(s"Type ${p.getClass} isn't Boolean type")
   }
 
-  def getNextString: Option[String] = next match {
-    case s: String => Some(s)
-    case null => None
-    case e => Some(e.toString)
+  def nextString: String = next match {
+    case s: String => s
+    case null => failStructure(s"Type null isn't String type")
   }
 
   def hasNext: Boolean = it.hasNext()

@@ -12,13 +12,33 @@ import scala.reflect.ClassTag
 import scalads.writers.Writer
 import scalads.readers.ObjectReader
 import org.bson.types.ObjectId
+import scalads.core.EntityBacker
+import scalads.mongodb.readers.BsonObjectReader
+import scalads.mongodb.writers.MongoWriter
 
-class MongoDatastore(coll: DBCollection, concern: WriteConcern)
+class MongoDatastore(protected[mongodb] val coll: DBCollection, concern: WriteConcern)
         extends AbstractDatastore[WriteResult, DBObject] {
 
   type QueryType[U] = MongoQuery[U]
 
   private val idString = "_id"
+
+
+  def update[U, V](theOld: U with EntityBacker[U, DBObject], theNew: U): WriteResult = {
+    val writer = newWriter(replacementEntity(theOld.ds_entity))
+    theOld.ds_serialize(theNew, writer)
+    coll.update(theOld.ds_entity, writer.result, false, false, concern)
+  }
+
+  /** Creates a new entity which will replace the current one once persisted
+    *
+    * @param old entity that will be replaced
+    * @return new entity that will replace the old one in the datastore
+    */
+  protected def replacementEntity(old: DBObject): DBObject = old.get("_id") match {
+    case null => sys.error("Cannot replace entity: doesn't have key.")
+    case id: ObjectId => new BasicDBObject().append(idString, id)
+  }
 
   protected def freshEntity(clazz: ClassTag[_]): DBObject = new BasicDBObject()
 
@@ -30,7 +50,7 @@ class MongoDatastore(coll: DBCollection, concern: WriteConcern)
   def putEntity(entity: DBObject): WriteResult = {
     entity.get(idString) match {
       case id: ObjectId =>
-        coll.update(replaceEntity(entity), entity, true, false, concern)
+        coll.update(replacementEntity(entity), entity, true, false, concern)
 
       case null => coll.insert(entity, concern)
     }
@@ -41,14 +61,14 @@ class MongoDatastore(coll: DBCollection, concern: WriteConcern)
     * @param entity datastore entity intended to be wrapped by the reader
     * @return appropriate object reader for the type of entity
     */
-  def newReader(entity: DBObject): ObjectReader = ???
+  def newReader(entity: DBObject): ObjectReader = new BsonObjectReader(entity)
 
   /** Generates a writer which will store the data in the provided entity
     *
     * @param entity storage container for the writer to place data in
     * @return the writer that wraps the entity
     */
-  def newWriter(entity: DBObject): Writer[DBObject] = ???
+  def newWriter(entity: DBObject): Writer[DBObject] = new MongoWriter(entity)
 
   /** Returns a new query that will search for the objects of type U
     *
@@ -61,14 +81,4 @@ class MongoDatastore(coll: DBCollection, concern: WriteConcern)
   def withTransaction[U](f: => U): U = ???
 
   def delete(entity: DBObject) { coll.remove(entity, concern) }
-
-  /** Creates a new entity which will replace the current one once persisted
-    *
-    * @param old entity that will be replaced
-    * @return new entity that will replace the old one in the datastore
-    */
-  protected def replaceEntity(old: DBObject): DBObject = old.get("_id") match {
-    case null => sys.error("Cannot replace entity: doesn't have key.")
-    case id: ObjectId => new BasicDBObject().append(idString, id)
-  }
 }

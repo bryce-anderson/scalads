@@ -2,23 +2,37 @@ package scalads.mongodb
 
 import scalads.core.{Filter, SortDirection, Projection, Query}
 import com.mongodb.DBObject
+import scalads.AbstractDatastore
 
 /**
  * @author Bryce Anderson
  *         Created on 6/15/13
  */
-class MongoQuery[U] extends Query[U, DBObject] {
+
+
+class MongoQuery[U](val ds: MongoDatastore) extends Query[U, DBObject] { self =>
+
   type Repr = MongoQuery[U]
 
-  def ds: MongoQuery[U]#DS = ???
+  def setFilter(filter: Filter): MongoQuery[U] = ???
 
-  def setFilter(filter: Filter): MongoQuery[U]#Repr = ???
+  def sortBy(field: String, dir: SortDirection): MongoQuery[U] = ???
 
-  def sortBy(field: String, dir: SortDirection): MongoQuery[U]#Repr = ???
+  def addProjection(proj: Projection): MongoQuery[U] = ???
 
-  def addProjection(proj: Projection): MongoQuery[U]#Repr = ???
+  def runQuery: Iterator[DBObject] = {
+    val it = ds.coll.find(null).iterator()
+    new Iterator[DBObject] {
+      def hasNext: Boolean = it.hasNext
 
-  def runQuery: Iterator[DBObject] = ???
+      def next(): DBObject = it.next()
+    }
+  }
 
-  def limit(size: Int): MongoQuery[U]#Repr = ???
+  private var limit = 0
+
+  def limit(size: Int): MongoQuery[U] = {
+    limit = size
+    self
+  }
 }
