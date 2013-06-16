@@ -17,7 +17,7 @@ import scalads.mongodb.readers.BsonObjectReader
 import scalads.mongodb.writers.MongoWriter
 
 class MongoDatastore(protected[mongodb] val coll: DBCollection, concern: WriteConcern)
-        extends AbstractDatastore[WriteResult, DBObject] {
+        extends AbstractDatastore[WriteResult, DBObject] { self =>
 
   type QueryType[U] = MongoQuery[U]
 
@@ -40,7 +40,8 @@ class MongoDatastore(protected[mongodb] val coll: DBCollection, concern: WriteCo
     case id: ObjectId => new BasicDBObject().append(idString, id)
   }
 
-  protected def freshEntity(clazz: ClassTag[_]): DBObject = new BasicDBObject()
+  protected def freshEntity(clazz: ClassTag[_]): DBObject =
+    new BasicDBObject("ds_type", clazz.runtimeClass.getName)
 
   /** Stores or updates the entity in the data store
     *
@@ -76,7 +77,7 @@ class MongoDatastore(protected[mongodb] val coll: DBCollection, concern: WriteCo
     * @tparam U type of the entities of interest
     * @return the new query
     */
-  def query[U](implicit clazz: ClassTag[U]): MongoQuery[U] = ???
+  def query[U](implicit clazz: ClassTag[U]): MongoQuery[U] = new MongoQuery[U](self, clazz)
 
   def withTransaction[U](f: => U): U = ???
 

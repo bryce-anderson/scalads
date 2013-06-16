@@ -20,8 +20,19 @@ trait Query[U, E] { self =>
 
   def ds: DS
 
+  /** Generated a new query that will filter the results based on the filter
+    *
+    * @param filter filter to be applied to the query
+    * @return new query with the filter applied
+    */
   def setFilter(filter: Filter): Repr
 
+  /** Sort the results based on the projection and sorting direction
+    *
+    * @param field Projection representing the field to sort by
+    * @param dir direction with which to sort
+    * @return new query which will sort the result by the field specified
+    */
   def sortBy(field: Projection, dir: SortDirection): Repr
 
   /** method to add the intended projections. Intended to be called immediately before mapIterator by the project macro
