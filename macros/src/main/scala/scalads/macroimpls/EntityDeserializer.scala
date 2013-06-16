@@ -55,13 +55,15 @@ object EntityDeserializer {
 
 
     val updateTree = Serializer.serializeImpl[U](c)(
-      c.Expr[U](Ident(newTermName("obj"))), c.Expr[Writer[_]](Ident(newTermName("writer")))
+      c.Expr[U](Ident(newTermName("obj"))), c.Expr[Writer[E]](Ident(newTermName("writer")))
     ).tree
+
+    val freshTpeName = newTypeName(c.fresh("$EntityBacker"))
 
     // Builds the augmentation methods
     val newTree = Block(List(
       readerTree: Tree,
-      ClassDef(Modifiers(Flag.FINAL), newTypeName("$anon"), List(), Template(List(appliedTpeTree, AppliedTypeTree(Ident(backerSym), List(appliedTpeTree, TypeTree(weakTypeOf[E])))),
+      ClassDef(Modifiers(Flag.FINAL), freshTpeName, List(), Template(List(appliedTpeTree, AppliedTypeTree(Ident(backerSym), List(appliedTpeTree, TypeTree(weakTypeOf[E])))),
         ValDef(Modifiers(Flag.PRIVATE), newTermName("self"), TypeTree(), EmptyTree) , List(
           DefDef(Modifiers(), nme.CONSTRUCTOR, Nil, Nil::Nil, TypeTree(),
             Block(
@@ -79,12 +81,12 @@ object EntityDeserializer {
           ), TypeTree(typeOf[Writer[_]]), Block(updateTree::Nil, Ident(newTermName("writer"))))
         ))
       )),
-      Apply(Select(New(Ident(newTypeName("$anon"))), nme.CONSTRUCTOR), List())
+      Apply(Select(New(Ident(freshTpeName)), nme.CONSTRUCTOR), List())
     )
 
     val result = c.Expr[U with EntityBacker[U, E]](  Block(newReaderTree::newDatastoreTree::Nil, newTree) )
 
-    println(result)
+    //println(result)
     result
   }
 }

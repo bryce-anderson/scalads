@@ -45,7 +45,7 @@ class QuerySpec extends GAESpecTemplate  {
     query.filter{ bryce => test.in < bryce.in }
   }
 
-  it should  "do filtering correctly" in {
+  it should "do filtering correctly" in {
     val query = ds.query[Test]
         .filter(_.in < 0)
 
@@ -55,7 +55,7 @@ class QuerySpec extends GAESpecTemplate  {
     query.filter{ bryce => test.in < bryce.in }
   }
 
-  it should "produce an iterator" in {
+  it should  "produce an iterator" in {
 
     addTests
 
@@ -100,7 +100,7 @@ class QuerySpec extends GAESpecTemplate  {
 
   }
 
-  it should  "project types properly" in {
+  it should "project types properly" in {
     val date = new Date()
     val types =  Types(1, 2, 3.0f, 4, "five", date)
     ds.put(types )

@@ -28,6 +28,14 @@ trait EntityBacker[U, E] { self: U =>
     ds.put(self)
   }
 
-  def ds_remove() = { ds.delete(self) }
+  def ds_updateWith(obj: U): Unit = {
+    val writer = ds.newWriter(ds_entity)
+    ds_serialize(obj, writer)
+    ds.putEntity(writer.result)
+  }
+
+  def ds_map(f: U => U): Unit = { ds_updateWith(f(self)) }
+
+  def ds_delete(): Unit = { ds.delete(self) }
 
 }

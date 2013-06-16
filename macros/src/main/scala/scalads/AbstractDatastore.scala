@@ -24,15 +24,9 @@ trait AbstractDatastore[+WriteResult, Entity] { self =>
     */
   type QueryType[U] <: Query[U, Entity]
 
-  /** Executes the provided function and stores the result of the writer in the datastore
-    *
-    * @param tpe classtag of the entity being stored
-    * @param f method that will operate on the writer to generate the applicable entity
-    * @return the native return value provided by the underlying data store upon writes
-    */
-  def putRaw(tpe: ClassTag[_])( f: Writer[Any] => Unit): WriteResult
+  protected def freshEntity(clazz: ClassTag[_]): Entity
 
-  /** Stores the entity in the datastore
+  /** Stores or updates the entity in the data store
     *
     * @param entity native entity intended to be stored
     * @return result of storing the entity
@@ -86,9 +80,9 @@ trait AbstractDatastore[+WriteResult, Entity] { self =>
     put(newEntities.result(): Iterable[Entity])
   }
 
-  def update[U,V](obj: U with EntityBacker[U, Entity])(f: U with EntityBacker[U, Entity] => U): WriteResult = {
-    val writer = newWriter(replaceEntity(obj.ds_entity))
-    obj.ds_serialize(f(obj), writer)
+  def update[U,V](theOld: U with EntityBacker[U, Entity], theNew: U): WriteResult = {
+    val writer = newWriter(replaceEntity(theOld.ds_entity))
+    theOld.ds_serialize(theNew, writer)
     putEntity(writer.result)
   }
 
@@ -112,9 +106,6 @@ trait AbstractDatastore[+WriteResult, Entity] { self =>
     * @tparam U static type of the object
     * @return result of the datastores write operation
     */
-  def put[U: EntitySerializer: ClassTag](obj: U): WriteResult = {
-    putRaw(implicitly[ClassTag[U]])( writer =>
-      implicitly[EntitySerializer[U]].serialize(obj, writer)
-    )
-  }
+  def put[U](obj: U)(implicit serializer: EntitySerializer[U], clazz: ClassTag[U]): WriteResult =
+    putEntity(serializer.serialize(obj, newWriter(freshEntity(clazz))).result)
 }

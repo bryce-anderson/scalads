@@ -1,15 +1,11 @@
 package appengine
 
-import appengine.GAESpecTemplate
 import scalads.macroimpls
 import com.google.appengine.api.datastore.FetchOptions.Builder.withLimit
 import com.google.appengine.api.datastore.{Entity, Query, DatastoreServiceFactory}
 
-import scalads.AbstractDatastore
 import scalads.appengine.readers.GAEObjectReader
 import scalads.appengine.writers.GAEWriter
-import org.scalatest.{BeforeAndAfter, FlatSpec}
-import org.scalatest.matchers.ShouldMatchers
 import scalads.appengine.GAEDatastore
 
 

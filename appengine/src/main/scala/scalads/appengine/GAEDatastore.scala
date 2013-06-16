@@ -38,13 +38,7 @@ class GAEDatastore(val svc: DatastoreService) extends AbstractDatastore[Key, Ent
 
   def putEntity(entity: Entity): Key = svc.put(entity)
 
-  def putRawWithKey(tpe: ClassTag[_], parent: Key)(f: (Writer[Any]) => Unit): Key = {
-    val writer = new GAEWriter(new Entity(tpe.runtimeClass.getName, parent))
-    f(writer)
-    putEntity(writer.result)
-  }
-
-  def putRaw(tpe: ClassTag[_])(f: (Writer[Any]) => Unit): Key = putRawWithKey(tpe, null)(f)
+  protected def freshEntity(clazz: ClassTag[_]): Entity = new Entity(clazz.runtimeClass.getName())
 
   def query[U](implicit clazz: ClassTag[U]): QueryType[U] = {
     new GAEQuery[U](self, new GQuery(clazz.runtimeClass.getName))
@@ -57,10 +51,9 @@ class GAEDatastore(val svc: DatastoreService) extends AbstractDatastore[Key, Ent
     * @tparam U type of the object you want to store
     * @return key of the newly persisted entity
     */
-  def put[U: EntitySerializer: ClassTag](obj: U, parent: Key = null): Key = {
-    putRawWithKey(implicitly[ClassTag[U]], parent)( writer =>
-      implicitly[EntitySerializer[U]].serialize(obj, writer)
-    )
+  def put[U](obj: U, parent: Key = null)(implicit serializer: EntitySerializer[U], clazz: ClassTag[U]): Key = {
+    val writer = newWriter(new Entity(clazz.runtimeClass.getName, parent))
+    putEntity(serializer.serialize(obj, writer).result)
   }
 
 }
