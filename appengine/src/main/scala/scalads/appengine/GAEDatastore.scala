@@ -11,6 +11,7 @@ import com.google.appengine.api.datastore.{Entity, Key,
                       DatastoreServiceFactory, DatastoreService, Query => GQuery}
 import scala.reflect.ClassTag
 import scalads.macroimpls.EntitySerializer
+import scalads.core.EntityBacker
 
 /**
  * @author Bryce Anderson
@@ -18,7 +19,14 @@ import scalads.macroimpls.EntitySerializer
  */
 class GAEDatastore(val svc: DatastoreService) extends AbstractDatastore[Key, Entity] { self =>
 
-  protected def replaceEntity(old: Entity): Entity = new Entity(old.getKey)
+
+  def update[U, V](theOld: U with EntityBacker[U, Entity], theNew: U): Key = {
+    val writer = newWriter(replacementEntity(theOld.ds_entity))
+    theOld.ds_serialize(theNew, writer)
+    putEntity(writer.result)
+  }
+
+  protected def replacementEntity(old: Entity): Entity = new Entity(old.getKey)
 
   type QueryType[U] = GAEQuery[U]
 
