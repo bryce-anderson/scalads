@@ -22,22 +22,27 @@ trait Query[U, E] { self =>
 
   def setFilter(filter: Filter): Repr
 
-  def sortBy(field: String, dir: SortDirection): Repr
+  def sortBy(field: Projection, dir: SortDirection): Repr
 
-  def addProjection(proj: Projection): Repr
+  /** method to add the intended projections. Intended to be called immediately before mapIterator by the project macro
+    *
+    * @param projs the projections to add
+    * @return the query with the applied projection.
+    */
+
+  protected def addProjections(projs: List[Projection]): Repr
 
   def runQuery: Iterator[E]
 
+  /** Sets the limit on how many results to return
+    *
+    * @param size maximum elements requested
+    * @return new query with limited return size
+    */
   def limit(size: Int): Repr
 
-  def getIterator(implicit deserializer: EntityBuilder[U, E]): QueryIterator[U with EntityBacker[U, E], E] = QueryIterator(ds, runQuery){ (ds, reader) =>
-    deserializer.deserialize(ds, reader)
-  }
-
-  def mapIterator[T](f: (DS, ObjectReader) => T): QueryIterator[T, E] = {
-
-    val it = runQuery
-
+  def projectAndMap[T](projs: List[Projection], f: (DS, ObjectReader) => T): QueryIterator[T, E] = {
+    val it = addProjections(projs).runQuery
     new QueryIterator[T, E]{
       def hasNext: Boolean = it.hasNext
       val ds: DS = self.ds
@@ -46,7 +51,11 @@ trait Query[U, E] { self =>
     }
   }
 
-  def mapIterator[T](f: ObjectReader => T): QueryIterator[T, E] = mapIterator( (_, r) => f(r) )
+  def getIterator(implicit deserializer: EntityBuilder[U, E]): QueryIterator[U with EntityBacker[U, E], E] = QueryIterator(ds, runQuery){ (ds, reader) =>
+    deserializer.deserialize(ds, reader)
+  }
+
+  def mapIterator[T](f: (DS, ObjectReader) => T): QueryIterator[T, E] = projectAndMap(Nil, f)
 
   def project[R](f: U => R): QueryIterator[R, E] =     macro QueryMacros.project[U, R, E]
 

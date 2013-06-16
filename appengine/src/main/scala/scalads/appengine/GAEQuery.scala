@@ -25,37 +25,30 @@ import scalads.macroimpls.EntityBuilder
  *         Created on 5/30/13
  */
 
-class GAEQuery[U](val ds: GAEDatastore,
-        private var gQuery: GQuery)
+class GAEQuery[U] private(val ds: GAEDatastore,
+        private val gQuery: GQuery,
+                   private val fetchOptions: FetchOptions)
             extends Query[U, GEntity] { self =>
+
+  def this(ds: GAEDatastore, gQuery: GQuery) = this(ds, gQuery, FetchOptions.Builder.withDefaults())
 
   type Repr = GAEQuery[U]
 
-  private var fetchOptions = FetchOptions.Builder.withDefaults()
 
+  override def limit(size: Int) = new GAEQuery[U](ds, gQuery, fetchOptions.limit(size))
 
-  def limit(size: Int) = {
-    fetchOptions = fetchOptions.limit(size)
-    self
-  }
+  def withEndCursor(offset: String) =
+    new GAEQuery[U](ds, gQuery, fetchOptions.endCursor(Cursor.fromWebSafeString(offset)))
 
-  def withEndCursor(offset: String) = {
-    fetchOptions = fetchOptions.endCursor(Cursor.fromWebSafeString(offset))
-    self
-  }
+  def withStartCursor(offset: String) =
+    new GAEQuery[U](ds, gQuery, fetchOptions.startCursor(Cursor.fromWebSafeString(offset)))
 
-  def withStartCursor(offset: String) = {
-    fetchOptions = fetchOptions.startCursor(Cursor.fromWebSafeString(offset))
-    self
-  }
-
-  def runQuery = {
+  override def runQuery: Iterator[GEntity] = {
     val result = ds.svc.prepare(gQuery).asQueryResultIterator(fetchOptions).asScala
     result
   }
 
-  def setFilter(filter: Filter): Repr = {
-
+  override def setFilter(filter: Filter): Repr = {
     def walk(f: Filter): GFilter = f match {
       case f: SingleFilter =>
         val op = f.op match {
@@ -72,33 +65,36 @@ class GAEQuery[U](val ds: GAEDatastore,
       case CompositeFilter(f1, f2, JoinOperation.OR) =>  CompositeFilterOperator.or(walk(f1), walk(f2))
     }
 
-    gQuery = gQuery.setFilter(walk(filter))
-    self
+    new GAEQuery[U](ds, gQuery.setFilter(walk(filter)), fetchOptions)
   }
 
-  def withParent(key: Key): Repr = {
-    gQuery = gQuery.setAncestor(key)
-    self
-  }
+  def withParent(key: Key): Repr = new GAEQuery[U](ds, gQuery.setAncestor(key), fetchOptions)
 
   private var projections: List[Projection] = Nil
 
-  def addProjection(proj: Projection): Repr = {
-    if (!projections.contains(proj)) {
-      projections = proj::projections
-      gQuery = gQuery.addProjection(new PropertyProjection(proj.path.mkString("."),
-        GAEQuery.clazzMap.get(proj.clazz).getOrElse(proj.clazz)))
+  /** method to add the intended projections. Intended to be called immediately before mapIterator by the project macro
+    *
+    * @param projs the projections to add
+    * @return the query with the applied projection.
+    */
+  override def addProjections(projs: List[Projection]): GAEQuery[U] = {
+    val newQuery = projs.foldLeft(gQuery){ (q, proj) =>
+      if (!projections.contains(proj)) {
+        projections = proj::projections
+        q.addProjection(new PropertyProjection(proj.path.mkString("."),
+          GAEQuery.clazzMap.get(proj.clazz).getOrElse(proj.clazz)))
+      } else q
     }
-    self
+    new GAEQuery[U](ds, newQuery, fetchOptions)
   }
 
-  def sortBy(field: String, dir: core.SortDirection): Repr = {
+  override def sortBy(field: Projection, dir: core.SortDirection): GAEQuery[U] = {
     import core.{SortDirection => SDir}
-    gQuery = gQuery.addSort(field, dir match {
+    val newQuery = gQuery.addSort(field.path.mkString("."), dir match {
       case SDir.ASC => SortDirection.ASCENDING
       case SDir.DSC => SortDirection.DESCENDING
     })
-    self
+    new GAEQuery[U](ds, newQuery, fetchOptions)
   }
 }
 

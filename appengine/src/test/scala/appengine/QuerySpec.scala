@@ -123,7 +123,7 @@ class QuerySpec extends GAESpecTemplate  {
     val comp = Compound(1, Test(1, "one"))
     ds.put(comp)
 
-    val result = ds.query[Compound]
+    val result =  ds.query[Compound]
       .project( i => (i.in, i.in2.in))
       .next()
 

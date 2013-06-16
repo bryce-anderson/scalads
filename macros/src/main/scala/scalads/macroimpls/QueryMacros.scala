@@ -3,20 +3,18 @@ package scalads.macroimpls
 import language.experimental.macros
 import scala.reflect.macros.Context
 
-import scala.util.control.Exception.catching
-
 import scalads.core._
 import scalads.readers.ObjectReader
 import scalads.core.Filter
 import scala.collection.mutable.ListBuffer
-import scalads.macroimpls.macrohelpers.QueryMacroHelpers
+import scalads.macroimpls.macrohelpers.{MacroHelpers, QueryMacroHelpers}
 
 
 object QueryMacros {
 
   def project[U: c.WeakTypeTag, R, E](c: Context { type PrefixType = Query[U, E]})(f: c.Expr[U => R]): c.Expr[QueryIterator[R, E]] = {
     val helpers = new macrohelpers.MacroHelpers[c.type](c)
-    import helpers.mkStringList
+    import helpers.mkList
 
     val queryHelpers = new QueryMacroHelpers[c.type](c)
     import queryHelpers.{findNameOption, getReaderAndName}
@@ -50,14 +48,16 @@ object QueryMacros {
 
     val bodyTree = c.Expr[R](c.resetLocalAttrs(splicer.transform(body)))
 
-    val qExpr = projections.result.foldLeft(c.prefix){ (p, s) =>
-      val projExpr = mkStringList(s._1)
-      val clazzExpr = c.Expr[Class[_]](Literal(Constant(s._2)))
-      reify(p.splice.addProjection(Projection(projExpr.splice, clazzExpr.splice)))
+    val projExprs = projections.result.map{ case (p, t) =>
+      val projsExpr = mkList[String](p.map(c.literal(_)))
+      val clazzExpr = c.Expr[Class[_]](Literal(Constant(t)))
+      reify(Projection(projsExpr.splice, clazzExpr.splice))
     }
 
+    val projLstExpr = mkList[Projection](projExprs)
+
     val result = reify {
-      qExpr.splice.mapIterator( reader => bodyTree.splice)
+      c.prefix.splice.projectAndMap(projLstExpr.splice,  (_, reader) => bodyTree.splice)
     }
     //println(s"Projection: $result")
     result
@@ -66,14 +66,18 @@ object QueryMacros {
   def sortImplGeneric[U: c.WeakTypeTag, Repr <: Query[U, _]](c: Context {type PrefixType = Repr})
                    (f: c.Expr[U => Any], dir: c.Expr[SortDirection]): c.Expr[Repr#Repr] = {
     val queryHelpers = new QueryMacroHelpers[c.type](c)
-    import queryHelpers.findName
+    val helpers = new MacroHelpers[c.type](c)
+    import queryHelpers.findPathStack
+    import helpers.mkList
 
     import c.universe._
 
     val Function(List(ValDef(_, name, _, _)), body) = f.tree
-    val nameStr = c.literal(findName(body, name))
+    val clazzExpr = c.Expr[Class[_]](Literal(Constant(body.tpe)))
+    val pathStack = mkList[String](findPathStack(body, name).map(c.literal(_)))
+    val projExpr = reify(Projection(pathStack.splice, clazzExpr.splice))
 
-    val result = reify(c.prefix.splice.sortBy(nameStr.splice, dir.splice))
+    val result = reify(c.prefix.splice.sortBy(projExpr.splice, dir.splice))
     result
   }
 
@@ -89,7 +93,7 @@ object QueryMacros {
 
   def filterImpl[U: c.WeakTypeTag, Repr <: Query[U, _]](c: Context {type PrefixType = Repr})(f: c.Expr[U => Boolean]): c.Expr[Repr#Repr] = {
     val helpers = new macrohelpers.MacroHelpers[c.type](c)
-    import helpers.mkStringList
+    import helpers.mkList
 
     val queryHelpers = new QueryMacroHelpers[c.type](c)
     import queryHelpers.findPathStack
@@ -113,7 +117,7 @@ object QueryMacros {
         case "!=" =>    reify(Operation.NE)
         case _ => sys.error("Failed to find operator")
       }
-      val nameExpr = mkStringList(path)
+      val nameExpr = mkList[String](path.map(c.literal(_)))
       val classExpr = c.Expr[Class[_]](Literal(Constant(value.tpe)))
       reify (SingleFilter(Projection(nameExpr.splice, classExpr.splice), op.splice, c.Expr[Any](value).splice))
     }
