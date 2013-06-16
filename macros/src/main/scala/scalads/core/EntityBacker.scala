@@ -2,7 +2,6 @@ package scalads
 package core
 
 import scalads.writers.Writer
-import com.sun.corba.se.impl.orbutil.ObjectWriter
 
 
 /**

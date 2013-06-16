@@ -36,5 +36,13 @@ object build extends Build {
     )
   ) dependsOn(macros)
   
+  lazy val mongodb: Project = Project(
+    id = "ds-mongodb",
+    base = file("mongodb"),
+    settings = Settings.buildSettings ++ Seq(parallelExecution in Test := false) ++ Seq(
+      libraryDependencies += MongoDBDriver
+    )
+  ) dependsOn(macros)
+  
 }
 
