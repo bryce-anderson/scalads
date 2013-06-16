@@ -45,7 +45,7 @@ class QuerySpec extends GAESpecTemplate  {
     query.filter{ bryce => test.in < bryce.in }
   }
 
-  it should "do filtering correctly" in {
+  it should  "do filtering correctly" in {
     val query = ds.query[Test]
         .filter(_.in < 0)
 

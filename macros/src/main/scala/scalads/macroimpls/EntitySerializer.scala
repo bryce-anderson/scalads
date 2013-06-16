@@ -12,7 +12,7 @@ import scala.reflect.macros.Context
 
 trait EntitySerializer[U] {
   def clazz: Class[U]
-  def serialize(obj: U, writer: Writer[_]): Unit
+  def serialize(obj: U, writer: Writer[_]): Writer[_]
 }
 
 object EntitySerializer {
@@ -27,7 +27,10 @@ object EntitySerializer {
     val serializeExpr = Serializer.serializeImpl[U](c)(objExpr, writerExpr)
 
     reify ( new EntitySerializer[U] {
-      def serialize(obj: U, writer: Writer[_]) { serializeExpr.splice }
+      def serialize(obj: U, writer: Writer[_]): Writer[_] = {
+        serializeExpr.splice
+        writer
+      }
 
       def clazz: Class[U] = clazzExpr.splice
     })

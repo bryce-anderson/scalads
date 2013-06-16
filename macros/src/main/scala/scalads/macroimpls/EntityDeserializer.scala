@@ -76,7 +76,7 @@ object EntityDeserializer {
           DefDef(Modifiers(), newTermName("ds_serialize"), Nil, List(
             ValDef(Modifiers(Flag.PARAM), newTermName("obj"), typeArgumentTree(tpe), EmptyTree)::
               ValDef(Modifiers(Flag.PARAM), newTermName("writer"), TypeTree(typeOf[Writer[_]]), EmptyTree)::Nil
-          ), TypeTree(typeOf[Unit]), updateTree)
+          ), TypeTree(typeOf[Writer[_]]), Block(updateTree::Nil, Ident(newTermName("writer"))))
         ))
       )),
       Apply(Select(New(Ident(newTypeName("$anon"))), nme.CONSTRUCTOR), List())
@@ -84,7 +84,7 @@ object EntityDeserializer {
 
     val result = c.Expr[U with EntityBacker[U, E]](  Block(newReaderTree::newDatastoreTree::Nil, newTree) )
 
-    //println(result)
+    println(result)
     result
   }
 }
