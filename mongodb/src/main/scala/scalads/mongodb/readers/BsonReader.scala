@@ -82,12 +82,14 @@ class BsonObjectReader(obj:BSONObject) extends ObjectReader {
   def optBigInt(key: String): Option[BigInt] = obj.get(key) match {
     case i: Integer => Some(BigInt(i))
     case i: java.lang.Long => Some(BigInt(i))
+    case s: String => Some(BigInt(s))
     case _ => None
   }
 
   def optBigDecimal(key: String): Option[BigDecimal] = obj.get(key) match {
     case i: java.lang.Float => Some(BigDecimal(i.toDouble))
     case i: java.lang.Double => Some(BigDecimal(i))
+    case s: String => Some(BigDecimal(s))
     case _ => None
   }
 

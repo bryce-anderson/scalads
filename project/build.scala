@@ -40,9 +40,10 @@ object build extends Build {
     id = "ds-mongodb",
     base = file("mongodb"),
     settings = Settings.buildSettings ++ Seq(parallelExecution in Test := false) ++ Seq(
-      libraryDependencies += MongoDBDriver
+      libraryDependencies += MongoDBDriver,
+      libraryDependencies += MongoMemoryDB % "test"
     )
-  ) dependsOn(macros)
+  ) dependsOn(macros % "test->test;compile->compile")
   
 }
 

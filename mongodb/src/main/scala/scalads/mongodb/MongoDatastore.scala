@@ -16,13 +16,10 @@ import scalads.core.EntityBacker
 import scalads.mongodb.readers.BsonObjectReader
 import scalads.mongodb.writers.MongoWriter
 
-class MongoDatastore(protected[mongodb] val coll: DBCollection, concern: WriteConcern)
+class MongoDatastore(protected[mongodb] val coll: DBCollection, concern: WriteConcern = new WriteConcern())
         extends AbstractDatastore[WriteResult, DBObject] { self =>
 
   type QueryType[U] = MongoQuery[U]
-
-  private val idString = "_id"
-
 
   def update[U, V](theOld: U with EntityBacker[U, DBObject], theNew: U): WriteResult = {
     val writer = newWriter(replacementEntity(theOld.ds_entity))
@@ -35,13 +32,13 @@ class MongoDatastore(protected[mongodb] val coll: DBCollection, concern: WriteCo
     * @param old entity that will be replaced
     * @return new entity that will replace the old one in the datastore
     */
-  protected def replacementEntity(old: DBObject): DBObject = old.get("_id") match {
+  protected def replacementEntity(old: DBObject): DBObject = old.get(MongoDatastore.id) match {
     case null => sys.error("Cannot replace entity: doesn't have key.")
-    case id: ObjectId => new BasicDBObject().append(idString, id)
+    case id: ObjectId => new BasicDBObject().append(MongoDatastore.id, id)
   }
 
   protected def freshEntity(clazz: ClassTag[_]): DBObject =
-    new BasicDBObject("ds_type", clazz.runtimeClass.getName)
+    new BasicDBObject(MongoDatastore.dbTypeField, clazz.runtimeClass.getName)
 
   /** Stores or updates the entity in the data store
     *
@@ -49,7 +46,7 @@ class MongoDatastore(protected[mongodb] val coll: DBCollection, concern: WriteCo
     * @return result of storing the entity
     */
   def putEntity(entity: DBObject): WriteResult = {
-    entity.get(idString) match {
+    entity.get(MongoDatastore.id) match {
       case id: ObjectId =>
         coll.update(replacementEntity(entity), entity, true, false, concern)
 
@@ -82,4 +79,12 @@ class MongoDatastore(protected[mongodb] val coll: DBCollection, concern: WriteCo
   def withTransaction[U](f: => U): U = ???
 
   def delete(entity: DBObject) { coll.remove(entity, concern) }
+}
+
+object MongoDatastore {
+  def apply(coll: DBCollection, concern: WriteConcern = new WriteConcern()) = new MongoDatastore(coll, concern)
+
+  private[mongodb] val dbTypeField = "ds_type"
+
+  private[mongodb] val id = "_id"
 }

@@ -6,7 +6,6 @@ import scalads.core.Projection
 import scala.reflect.ClassTag
 import scalads.core.SortDirection.{ASC, DSC}
 import scala.annotation.tailrec
-import org.bson.LazyBSONList
 import org.bson.types.BasicBSONList
 
 /**
@@ -17,7 +16,7 @@ import org.bson.types.BasicBSONList
 
 class MongoQuery[U] private(val ds: MongoDatastore,
                             tpe: ClassTag[U],
-                            resultsLimit: Long,
+                            maxResults: Int,
                             filters: List[Filter],
                             sorts: List[DBObject],
                             projections: List[Projection]) extends Query[U, DBObject] { self =>
@@ -32,7 +31,7 @@ class MongoQuery[U] private(val ds: MongoDatastore,
     case h::t => new BasicDBObject(h, makePath(t, lastOp))
   }
 
-  private def mkTypeFilter = new BasicDBObject().append("ds_type", tpe.runtimeClass.getName)
+  private def mkTypeFilter = new BasicDBObject().append(MongoDatastore.dbTypeField, tpe.runtimeClass.getName)
 
   /** Generated a new query that will filter the results based on the filter
     *
@@ -40,7 +39,7 @@ class MongoQuery[U] private(val ds: MongoDatastore,
     * @return new query with the filter applied
     */
   def setFilter(filter: Filter): MongoQuery[U] =
-    new MongoQuery[U](ds, tpe, resultsLimit, filter::filters, sorts, projections)
+    new MongoQuery[U](ds, tpe, maxResults, filter::filters, sorts, projections)
 
   /** Sort the results based on the projection and sorting direction
     *
@@ -54,7 +53,7 @@ class MongoQuery[U] private(val ds: MongoDatastore,
       case DSC => -1
     }
     val obj = makePath(field.path, str => new BasicDBObject(str, order))
-    new MongoQuery[U](ds, tpe, resultsLimit, filters, obj::sorts, projections)
+    new MongoQuery[U](ds, tpe, maxResults, filters, obj::sorts, projections)
   }
 
   /** method to add the intended projections. Intended to be called immediately before mapIterator by the project macro
@@ -63,7 +62,7 @@ class MongoQuery[U] private(val ds: MongoDatastore,
     * @return the query with the applied projection.
     */
   protected def addProjections(projs: List[Projection]): MongoQuery[U] =
-    new MongoQuery[U](ds, tpe, resultsLimit, filters, sorts, projs:::projections)
+    new MongoQuery[U](ds, tpe, maxResults, filters, sorts, projs:::projections)
 
   // generates the DBObject for a filter
   private def filterwalk(f: Filter): DBObject = f match {
@@ -81,14 +80,14 @@ class MongoQuery[U] private(val ds: MongoDatastore,
 
     case CompositeFilter(f1, f2, JoinOperation.AND) =>
       val lst = new BasicDBList
-      lst.put("0",filterwalk(f1))
-      lst.put("1", filterwalk(f2))
+      lst.put(0, filterwalk(f1))
+      lst.put(1, filterwalk(f2))
       new BasicDBObject("$and", lst)
 
     case CompositeFilter(f1, f2, JoinOperation.OR) =>
       val lst = new BasicDBList
-      lst.put("0",filterwalk(f1))
-      lst.put("1", filterwalk(f2))
+      lst.add(filterwalk(f1))
+      lst.add(filterwalk(f2))
       new BasicDBObject("$or", lst)
   }
 
@@ -131,9 +130,9 @@ class MongoQuery[U] private(val ds: MongoDatastore,
         Some(rootObj)
     }
 
-    // Run the query and add the sort directions
+    // Run the query, add the limit, and add the sort directions
     val it = sorts.foldRight(
-      grandProjection.fold(ds.coll.find(grandFilter))(ds.coll.find(grandFilter, _))
+      grandProjection.fold(ds.coll.find(grandFilter))(ds.coll.find(grandFilter, _)).limit(maxResults)
     )((s, it) => it.sort(s))
 
     new Iterator[DBObject] {

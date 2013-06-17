@@ -8,7 +8,7 @@ import org.scalatest.matchers.ShouldMatchers
  * @author Bryce Anderson
  *         Created on 5/30/13
  */
-class GAESpecTemplate extends FlatSpec with BeforeAndAfter with ShouldMatchers {
+trait GAESpecTemplate extends FlatSpec with BeforeAndAfter with ShouldMatchers {
 
   private val helper = new LocalServiceTestHelper(new LocalDatastoreServiceTestConfig())
 

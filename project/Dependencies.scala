@@ -13,5 +13,6 @@ object Dependencies {
   lazy val GoogleAppEngineLabs = "com.google.appengine" % "appengine-api-labs" % appengineVersion
   
   lazy val MongoDBDriver = "org.mongodb" % "mongo-java-driver" % "2.11.1"
+  lazy val MongoMemoryDB = "de.bwaldvogel" % "mongo-java-server" % "1.1.1"
   
 }
