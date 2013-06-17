@@ -2,27 +2,39 @@
 
 ScalaDS aims to provide macro based serialization and deserialization of classes for different datastore backends.
 
+## Philosophy
+
+This is an experiment to see if I could make a datastore that would abstract the core features of serialization and generating queries while letting the native features of the backends shine through. To that end, entities are always natively accessible from query results even when deserializing to its scala class.
+
 # Features
 - Automatic serialization and deserialization of fields in class constructors (case class and regular class)
-- Deserialized classes are *augmented* with convienence methods for updating the datastore
+- De-serialized classes are *augmented* with convenience methods for updating the datastore
 - Supports nested types and flattens the structure for storage
 - Type safe query system
-- Dont need to add Serializable interface to classes
+- Don’t need to add Serializable interface to classes
+- Returned “entities” are the real scala case classes augmented with different datastore methods to allow updating, removing, etc. See the ‘ds_’ methods of the EntityBacker trait that is mixed in to returned entities.
+
 
 
 ## Supported Backends
 
-Right now the project is getting lifted off the ground with Googles App Engine Datastore. Other backends may be targeted in the future such as MongoDB and possibly traditional SQL style storage systems.
+### Google App Engine Datastore
+The starting point for this project, Googles App Engine Datastore is a first class citizen.
+
+### MongoDB
+Fresh off the press is MongoDB support. It’s largely feature complete, but like the rest of this young lib, there are almost certainly bugs.
 
 ## Flux
 
-The library is still largely in the experimental stage. Features and bugs will be in high flux until the abstract datastore interface has been generalized. Hopefully features will come and bugs will go...
+The library is still largely in the experimental stage. I expect the library to have an initially high code. Hopefully features will come and bugs will go...
 
 ## sbt Dependency
 
 There are currently no packages in maven repos which can automatically be pulled. The best way to get the library is to pull the github url directly.
 
 ## Examples
+
+*getting the datastore will depend on the backend being used as there are different connection considerations*
 
 ### Serializing a class
 

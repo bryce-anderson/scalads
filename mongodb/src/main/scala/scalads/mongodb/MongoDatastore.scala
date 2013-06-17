@@ -76,8 +76,6 @@ class MongoDatastore(protected[mongodb] val coll: DBCollection, concern: WriteCo
     */
   def query[U](implicit clazz: ClassTag[U]): MongoQuery[U] = new MongoQuery[U](self, clazz)
 
-  def withTransaction[U](f: => U): U = ???
-
   def delete(entity: DBObject) { coll.remove(entity, concern) }
 }
 

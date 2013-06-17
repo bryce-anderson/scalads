@@ -57,8 +57,6 @@ trait AbstractDatastore[+WriteResult, Entity] { self =>
     */
   def query[U](implicit clazz: ClassTag[U]): QueryType[U]
 
-  def withTransaction[U](f: => U): U
-
   def delete(entity: Entity): Unit
 
   /** Creates a new entity which will replace the current one once persisted
