@@ -103,5 +103,8 @@ for(p <- it) println(s"Hello ${p._2}. You are on team ${p._1}")
 
 ```
 
+## License
+This project is licensed under the Apache 2.0 License.
+
 ## Author
-Bryce Anderson
+Bryce Anderson (bryce.anderson22@gmail.com)
