@@ -64,6 +64,7 @@ class MongoQuery[U] private(val ds: MongoDatastore,
   protected def addProjections(projs: List[Projection]): MongoQuery[U] =
     new MongoQuery[U](ds, tpe, maxResults, filters, sorts, projs:::projections)
 
+
   // generates the DBObject for a filter
   private def filterwalk(f: Filter): DBObject = f match {
     case f: SingleFilter =>

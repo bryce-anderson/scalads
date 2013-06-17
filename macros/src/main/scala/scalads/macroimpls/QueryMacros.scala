@@ -33,8 +33,12 @@ object QueryMacros {
         findNameOption(tree, name, weakTypeOf[U]) match {
           case Some((stack, tpe)) =>
             // Add the projections
-            if (helpers.isPrimitive(tpe)) { projections += ((stack, tpe)) }
-            else queryHelpers.getPathStacks(tpe).foreach{i => projections += ((stack:::i._1, i._2)) }
+
+            if (helpers.isPrimitive(tpe) ||
+              typeOf[List[Any]].erasure <:< tpe.erasure ||
+              typeOf[Map[String,Any]].erasure <:< tpe.erasure) { projections += ((stack, tpe)) }
+            else queryHelpers.getPathStacks(tpe).foreach{case (l, tpe) =>
+              projections += ((stack:::l, tpe)) }
 
           // Build the expression tree
             val (readerExpr, key) = getReaderAndName(c.Expr[ObjectReader](Ident(newTermName("reader"))), stack)

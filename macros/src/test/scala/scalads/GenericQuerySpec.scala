@@ -182,4 +182,18 @@ trait GenericQuerySpec[K, E] extends FlatSpec with ShouldMatchers  {
     result1._1 should equal(1)
     result1._2 should equal(2::3::Nil)
   }
+//
+//  it should "print stuff" in {
+//    case class WithList(number: Int, list: List[Int])
+//    val wl = WithList(1, 1::2::3::Nil)
+//    ds.put(wl)
+//
+//    val result1 = ds.query[WithList]
+//      .project{ i =>
+//      val num = i.number
+//      num
+//    }.nextEntity()
+//
+//    println(result1)
+//  }
 }

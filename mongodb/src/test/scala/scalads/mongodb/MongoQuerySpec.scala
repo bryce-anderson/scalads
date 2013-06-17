@@ -11,10 +11,8 @@ import scalads.AbstractDatastore
  */
 class MongoQuerySpec extends MongoSpecTemplate with scalads.GenericQuerySpec[WriteResult, DBObject] {
 
-  lazy val ds: AbstractDatastore[WriteResult, DBObject] = {
-    println(s"Collection: $coll")
-    MongoDatastore(coll)
-  }
+  lazy val ds: AbstractDatastore[WriteResult, DBObject] = MongoDatastore(coll)
+
   lazy val backend: String = "Mongo"
 //
 //  "MongoQuery" should "return simple objects" in {

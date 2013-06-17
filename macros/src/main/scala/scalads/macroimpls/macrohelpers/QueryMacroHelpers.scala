@@ -52,6 +52,7 @@ class QueryMacroHelpers[CONTEXT <: Context](val c: CONTEXT) {
   }
 
   def getPathStacks(tpe: Type): List[(List[String], Type)]  = {
+    println(s"Finding stack $tpe")
     val helpers = new macrohelpers.MacroHelpers[c.type](c)
     def getStacks(tpe: Type, stack: List[String]): List[(List[String], Type)] = {
       val TypeRef(_, sym: Symbol, tpeArgs: List[Type]) = tpe
