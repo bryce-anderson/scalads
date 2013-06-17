@@ -1,34 +1,26 @@
 package appengine
 
-import org.scalatest._
-import com.google.appengine.tools.development.testing.{LocalDatastoreServiceTestConfig, LocalServiceTestHelper}
+import org.scalatest.{BeforeAndAfterAll, FlatSpec}
 import org.scalatest.matchers.ShouldMatchers
+import com.google.appengine.tools.development.testing.{LocalDatastoreServiceTestConfig, LocalServiceTestHelper}
 
 /**
  * @author Bryce Anderson
- *         Created on 5/30/13
+ *         Created on 6/16/13
  */
-trait GAESpecTemplate extends FlatSpec with BeforeAndAfter with ShouldMatchers {
-
+trait GAESpecTemplate extends FlatSpec with BeforeAndAfterAll with ShouldMatchers {
   private val helper = new LocalServiceTestHelper(new LocalDatastoreServiceTestConfig())
+  helper.setUp()
 
-  after { GAESpecTemplate.tearDown(helper) }
-
-  before {  GAESpecTemplate.setUp(helper) }
-
-}
-
-object GAESpecTemplate {
-  private var count = 0
-  private val lock = new Object
-
-  def setUp(helper: LocalServiceTestHelper) = lock.synchronized {
-    if(count == 0) helper.setUp()
-    count += 1
+  override def afterAll() {
+    //GAESpecTemplate.tearDown(helper)
+    helper.tearDown()
+    super.afterAll()
   }
 
-  def tearDown(helper: LocalServiceTestHelper) = lock.synchronized {
-    count -= 1
-    if (count == 0) helper.tearDown()
+  override def beforeAll() {
+    //GAESpecTemplate.setUp(helper)
+    //helper.setUp()
+    super.beforeAll()
   }
 }

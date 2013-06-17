@@ -1,9 +1,9 @@
 package scalads.mongodb
 
 import org.scalatest.matchers.ShouldMatchers
-import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach, FlatSpec}
+import org.scalatest.{BeforeAndAfterAll, FlatSpec}
 
-import com.mongodb.{DBCollection, ServerAddress, MongoClient}
+import com.mongodb.{ServerAddress, MongoClient}
 
 import de.bwaldvogel.mongo.backend.memory.MemoryBackend
 import de.bwaldvogel.mongo.MongoServer
@@ -20,11 +20,6 @@ trait MongoSpecTemplate extends FlatSpec with BeforeAndAfterAll with ShouldMatch
   private lazy val client = new MongoClient(new ServerAddress(serverAddress))
   def coll = client.getDB("testdb").getCollection("testcollection")
 
-//  private var server: MongoServer = null
-//  private var client: MongoClient = null
-//  var coll: DBCollection = null
-//
-//
   override protected def afterAll() {
     client.close()
     server.shutdownNow()

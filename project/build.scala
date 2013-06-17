@@ -34,7 +34,7 @@ object build extends Build {
       libraryDependencies += GoogleAppEngineStubs % "test",
       libraryDependencies += GoogleAppEngineLabs % "test"
     )
-  ) dependsOn(macros)
+  ) dependsOn(macros % "test->test;compile->compile")
   
   lazy val mongodb: Project = Project(
     id = "ds-mongodb",

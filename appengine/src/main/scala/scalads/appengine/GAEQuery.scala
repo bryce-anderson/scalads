@@ -78,6 +78,13 @@ class GAEQuery[U] private(val ds: GAEDatastore,
     * @return the query with the applied projection.
     */
   override def addProjections(projs: List[Projection]): GAEQuery[U] = {
+    // Search for blacklisted types
+    projs.foreach { p =>
+      if (GAEQuery.projectionsBlackList.contains(p.clazz))
+        return self
+    }
+
+    // Make the projections
     val newQuery = projs.foldLeft(gQuery){ (q, proj) =>
       if (!projections.contains(proj)) {
         projections = proj::projections
@@ -105,6 +112,10 @@ object GAEQuery {
     classOf[Double] -> classOf[java.lang.Double],
     classOf[Float] -> classOf[java.lang.Float]
   )
+
+  private[GAEQuery] val projectionsBlackList: List[Class[_]] =
+      classOf[List[_]]::
+      classOf[Map[_,_]]::Nil
 }
 
 

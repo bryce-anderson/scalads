@@ -32,6 +32,7 @@ class GAEObjectReader(val entity: PropertyContainer, prefix: String) extends Obj
   def optArrayReader(key: String): Option[ArrayIterator] = Option(entity.getProperty(fullPrefix + key)).flatMap(_ match {
     case lst: java.util.List[Any] => Some(new GAEArrayIterator(lst.iterator()))
     case r: RawValue => try {
+      println(s"Found raw:" + r)
       Some(new GAEArrayIterator(r.asStrictType(classOf[java.util.List[Any]]).iterator()))
     } catch { case _: Throwable => None }
     case e => None
