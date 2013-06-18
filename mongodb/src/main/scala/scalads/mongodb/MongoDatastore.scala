@@ -16,7 +16,7 @@ import scalads.core.EntityBacker
 import scalads.mongodb.readers.BsonObjectReader
 import scalads.mongodb.writers.MongoWriter
 
-class MongoDatastore(protected[mongodb] val coll: DBCollection, concern: WriteConcern = new WriteConcern())
+class MongoDatastore(protected[mongodb] val collection: DBCollection, concern: WriteConcern = new WriteConcern())
         extends AbstractDatastore[WriteResult, DBObject] { self =>
 
   type QueryType[U] = MongoQuery[U]
@@ -24,7 +24,7 @@ class MongoDatastore(protected[mongodb] val coll: DBCollection, concern: WriteCo
   def update[U, V](theOld: U with EntityBacker[U, DBObject], theNew: U): WriteResult = {
     val writer = newWriter(replacementEntity(theOld.ds_entity))
     theOld.ds_serialize(theNew, writer)
-    coll.update(theOld.ds_entity, writer.result, false, false, concern)
+    collection.update(theOld.ds_entity, writer.result, false, false, concern)
   }
 
   /** Creates a new entity which will replace the current one once persisted
@@ -50,9 +50,9 @@ class MongoDatastore(protected[mongodb] val coll: DBCollection, concern: WriteCo
   def putEntity(entity: DBObject): WriteResult = {
     entity.get(MongoDatastore.id) match {
       case id: ObjectId =>
-        coll.update(replacementEntity(entity), entity, true, false, concern)
+        collection.update(replacementEntity(entity), entity, true, false, concern)
 
-      case null => coll.insert(entity, concern)
+      case null => collection.insert(entity, concern)
     }
   }
 
@@ -78,7 +78,7 @@ class MongoDatastore(protected[mongodb] val coll: DBCollection, concern: WriteCo
     */
   def query[U](implicit tpeTg: TypeTag[U]): MongoQuery[U] = new MongoQuery[U](self, tpeTg)
 
-  def delete(entity: DBObject) { coll.remove(entity, concern) }
+  def delete(entity: DBObject) { collection.remove(entity, concern) }
 }
 
 object MongoDatastore {

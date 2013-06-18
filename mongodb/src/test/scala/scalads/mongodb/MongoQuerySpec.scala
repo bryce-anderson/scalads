@@ -22,7 +22,7 @@ class MongoQuerySpec extends MongoSpecTemplate with scalads.GenericQuerySpec {
 
       ds.put(ClassRenamed(1))
 
-      ds.coll.find(new BasicDBObject(MongoDatastore.dbTypeField, "foo")).count() should equal(1)
+      ds.collection.find(new BasicDBObject(MongoDatastore.dbTypeField, "foo")).count() should equal(1)
   }
 
   it should "find renamed types" in {
@@ -36,7 +36,7 @@ class MongoQuerySpec extends MongoSpecTemplate with scalads.GenericQuerySpec {
 
     ds.put(FieldRenamed(1))
 
-    val a = ds.coll.find(new BasicDBObject(MongoDatastore.dbTypeField, getName(typeTag[FieldRenamed]))
+    val a = ds.collection.find(new BasicDBObject(MongoDatastore.dbTypeField, getName(typeTag[FieldRenamed]))
       .append("foo", 1)
     )
 

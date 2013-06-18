@@ -53,7 +53,7 @@ class DatastoreSpec extends GAESpecTemplate {
     ds.put(t2, parent)
     ds.put(t3)
 
-    println(ds.svc.prepare(new Query()).asIterable().iterator().next())
+    println(ds.collection.prepare(new Query()).asIterable().iterator().next())
 
     ds.query[Test].withParent(parent)
       .getIterator.length should equal (1)

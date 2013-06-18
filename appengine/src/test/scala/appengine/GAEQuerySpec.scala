@@ -22,7 +22,7 @@ class GAEQuerySpec extends GAESpecTemplate with GenericQuerySpec {
 
     ds.put(ClassRenamed(1))
 
-    ds.svc.prepare(new Query("foo")).asList(FetchOptions.Builder.withDefaults()).size() should equal (1)
+    ds.collection.prepare(new Query("foo")).asList(FetchOptions.Builder.withDefaults()).size() should equal (1)
   }
 
   it should "find renamed types" in {
@@ -36,7 +36,7 @@ class GAEQuerySpec extends GAESpecTemplate with GenericQuerySpec {
 
     ds.put(FieldRenamed(1))
 
-    val a = ds.svc.prepare(new Query("foo")).asList(FetchOptions.Builder.withDefaults())
+    val a = ds.collection.prepare(new Query("foo")).asList(FetchOptions.Builder.withDefaults())
 
     a.size() should equal(1)
   }

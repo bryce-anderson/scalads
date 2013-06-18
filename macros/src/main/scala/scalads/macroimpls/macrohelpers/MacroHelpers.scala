@@ -13,9 +13,7 @@ class MacroHelpers[CTPE <: Context](val c: CTPE) {
   def macroError(msg: String) = { c.error(c.enclosingPosition, msg); throw new Exception }
 
   def getNameOption(sym: Symbol): Option[String] = sym.annotations.collect {
-    case Annotation(tpe, Literal(Constant(name: String))::Nil, _) if tpe =:= typeOf[Rename] =>
-      println(s"Found annotation name: $name")
-      name
+    case Annotation(tpe, Literal(Constant(name: String))::Nil, _) if tpe =:= typeOf[Rename] => name
   }.headOption
 
   // For building objects that take type parameters

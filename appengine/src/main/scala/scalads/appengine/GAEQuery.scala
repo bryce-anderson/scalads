@@ -43,7 +43,7 @@ class GAEQuery[U] private(val ds: GAEDatastore,
     new GAEQuery[U](ds, gQuery, fetchOptions.startCursor(Cursor.fromWebSafeString(offset)))
 
   override def runQuery: Iterator[GEntity] = {
-    val result = ds.svc.prepare(gQuery).asQueryResultIterator(fetchOptions).asScala
+    val result = ds.collection.prepare(gQuery).asQueryResultIterator(fetchOptions).asScala
     result
   }
 

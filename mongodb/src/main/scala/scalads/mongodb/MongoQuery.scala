@@ -138,7 +138,7 @@ class MongoQuery[U] private(val ds: MongoDatastore,
 
     // Run the query, add the limit, and add the sort directions
     val it = sorts.foldRight(
-      grandProjection.fold(ds.coll.find(grandFilter))(ds.coll.find(grandFilter, _)).limit(maxResults)
+      grandProjection.fold(ds.collection.find(grandFilter))(ds.collection.find(grandFilter, _)).limit(maxResults)
     )((s, it) => it.sort(s))
 
     new Iterator[DBObject] {

@@ -18,7 +18,7 @@ import scalads.util.AnnotationHelpers.getName
  * @author Bryce Anderson
  *         Created on 6/9/13
  */
-class GAEDatastore(val svc: DatastoreService) extends AbstractDatastore[Key, Entity] { self =>
+class GAEDatastore(val collection: DatastoreService) extends AbstractDatastore[Key, Entity] { self =>
 
 
   def update[U, V](theOld: U with EntityBacker[U, Entity], theNew: U): Key = {
@@ -32,20 +32,20 @@ class GAEDatastore(val svc: DatastoreService) extends AbstractDatastore[Key, Ent
   type QueryType[U] = GAEQuery[U]
 
   def withTransaction[U](f: => U): U = {
-    val txn = svc.beginTransaction()
+    val txn = collection.beginTransaction()
     try { val a = f; txn.commit(); a }
     finally { if(txn.isActive) txn.rollback() }
   }
 
-  def delete(entity: Entity) {svc.delete(entity.getKey)}
+  def delete(entity: Entity) {collection.delete(entity.getKey)}
 
   def newReader(entity: Entity): GAEObjectReader = new GAEObjectReader(entity, "")
 
   def newWriter(entity: Entity) = new GAEWriter(entity)
 
-  override def put(entities: Iterable[Entity]) { svc.put(entities.asJava) }
+  override def put(entities: Iterable[Entity]) { collection.put(entities.asJava) }
 
-  def putEntity(entity: Entity): Key = svc.put(entity)
+  def putEntity(entity: Entity): Key = collection.put(entity)
 
   protected def freshEntity(tpeTg: TypeTag[_]): Entity = new Entity(getName(tpeTg))
 
