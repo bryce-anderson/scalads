@@ -3,15 +3,16 @@ package scalads.appengine
 import scala.collection.JavaConverters._
 
 import scalads.AbstractDatastore
-import scalads.writers.Writer
 import scalads.appengine.readers.GAEObjectReader
 import scalads.appengine.writers.GAEWriter
 
 import com.google.appengine.api.datastore.{Entity, Key,
                       DatastoreServiceFactory, DatastoreService, Query => GQuery}
-import scala.reflect.ClassTag
+import scala.reflect.runtime.universe.TypeTag
 import scalads.macroimpls.EntitySerializer
 import scalads.core.EntityBacker
+
+import scalads.util.AnnotationHelpers.getName
 
 /**
  * @author Bryce Anderson
@@ -46,10 +47,10 @@ class GAEDatastore(val svc: DatastoreService) extends AbstractDatastore[Key, Ent
 
   def putEntity(entity: Entity): Key = svc.put(entity)
 
-  protected def freshEntity(clazz: ClassTag[_]): Entity = new Entity(clazz.runtimeClass.getName())
+  protected def freshEntity(tpeTg: TypeTag[_]): Entity = new Entity(getName(tpeTg))
 
-  def query[U](implicit clazz: ClassTag[U]): QueryType[U] = {
-    new GAEQuery[U](self, new GQuery(clazz.runtimeClass.getName))
+  def query[U](implicit tpeTg: TypeTag[U]): QueryType[U] = {
+    new GAEQuery[U](self, new GQuery(getName(tpeTg)))
   }
 
   /** Method overload to let GAEDatastore set parents
@@ -59,8 +60,8 @@ class GAEDatastore(val svc: DatastoreService) extends AbstractDatastore[Key, Ent
     * @tparam U type of the object you want to store
     * @return key of the newly persisted entity
     */
-  def put[U](obj: U, parent: Key = null)(implicit serializer: EntitySerializer[U], clazz: ClassTag[U]): Key = {
-    val writer = newWriter(new Entity(clazz.runtimeClass.getName, parent))
+  def put[U](obj: U, parent: Key)(implicit serializer: EntitySerializer[U], tpeTg: TypeTag[U]): Key = {
+    val writer = newWriter(new Entity(getName(tpeTg), parent))
     putEntity(serializer.serialize(obj, writer).result)
   }
 

@@ -37,14 +37,14 @@ trait AbstractDatastore[+WriteResult, Entity] { self =>
     * @param entity datastore entity intended to be wrapped by the reader
     * @return appropriate object reader for the type of entity
     */
-  def newReader(entity: Entity): ObjectReader
+  private[scalads] def newReader(entity: Entity): ObjectReader
 
   /** Generates a writer which will store the data in the provided entity
     *
     * @param entity storage container for the writer to place data in
     * @return the writer that wraps the entity
     */
-  def newWriter(entity: Entity): Writer[Entity]
+  private[scalads] def newWriter(entity: Entity): Writer[Entity]
 
   /** Returns a new query that will search for the objects of type U
     *

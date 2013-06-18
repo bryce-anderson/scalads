@@ -10,14 +10,13 @@ import language.experimental.macros
 
 import com.google.appengine.api.datastore.{Query => GQuery, Entity => GEntity, FetchOptions, Cursor, Key, PropertyProjection}
 import com.google.appengine.api.datastore.Query.{Filter => GFilter, CompositeFilterOperator, FilterPredicate, SortDirection}
-import scalads.readers.ObjectReader
-
 
 import scala.collection.JavaConverters._
 
 
 import scalads.core.{EntityBacker, Query, Operation,
         CompositeFilter, Projection, JoinOperation, Filter, SingleFilter}
+
 import scalads.macroimpls.EntityBuilder
 
 /**
@@ -26,9 +25,9 @@ import scalads.macroimpls.EntityBuilder
  */
 
 class GAEQuery[U] private(val ds: GAEDatastore,
-        private val gQuery: GQuery,
-                   private val fetchOptions: FetchOptions)
-            extends Query[U, GEntity] { self =>
+                    private val gQuery: GQuery,
+                    private val fetchOptions: FetchOptions)
+                                extends Query[U, GEntity] { self =>
 
   def this(ds: GAEDatastore, gQuery: GQuery) = this(ds, gQuery, FetchOptions.Builder.withDefaults())
 

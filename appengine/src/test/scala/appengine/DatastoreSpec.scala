@@ -1,7 +1,7 @@
 package appengine
 
 import scalads.appengine.GAEDatastore
-import com.google.appengine.api.datastore.Entity
+import com.google.appengine.api.datastore.{Query, Entity}
 
 /**
  * @author Bryce Anderson
@@ -11,6 +11,8 @@ import com.google.appengine.api.datastore.Entity
 class DatastoreSpec extends GAESpecTemplate {
 
   val ds = GAEDatastore.getDatastoreService()
+
+  case class Thing(in: Int)
 
   def addTests = {
     0 until 10 foreach { i =>
@@ -51,6 +53,8 @@ class DatastoreSpec extends GAESpecTemplate {
     ds.put(t2, parent)
     ds.put(t3)
 
+    println(ds.svc.prepare(new Query()).asIterable().iterator().next())
+
     ds.query[Test].withParent(parent)
       .getIterator.length should equal (1)
 
@@ -60,8 +64,6 @@ class DatastoreSpec extends GAESpecTemplate {
   }
 
   it should "update entities" in {
-
-    case class Thing(in: Int)
 
     0 until 10 map { i => ds.put(Thing(i))}
 

@@ -28,8 +28,9 @@ class SerializerSpec extends GAESpecTemplate {
     ds.prepare(new Query("appengine.SerializerSpec.Simple")).countEntities(withLimit(10)) should equal (1)
   }
 
+  case class SuperString(str: String)
+
   it should "Store longer strings" in {
-    case class SuperString(str: String)
 
     val a = SuperString("hello"*500)
     val ds = GAEDatastore.getDatastoreService()
