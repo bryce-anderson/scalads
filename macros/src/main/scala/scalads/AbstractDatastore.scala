@@ -1,16 +1,13 @@
 package scalads
 
-import language.experimental.macros
-import scala.reflect.macros.Context
-
 import scala.collection.mutable.ListBuffer
 import scalads.readers.ObjectReader
-import scalads.macroimpls.{EntitySerializer, EntityBuilder, Serializer}
-
+import scalads.macroimpls.EntitySerializer
 
 import scalads.core._
 import scalads.writers.Writer
-import scala.reflect.ClassTag
+
+import scala.reflect.runtime.universe.TypeTag
 
 /**
  * @author Bryce Anderson
@@ -26,7 +23,7 @@ trait AbstractDatastore[+WriteResult, Entity] { self =>
     */
   type QueryType[U] <: Query[U, Entity]
 
-  protected def freshEntity(clazz: ClassTag[_]): Entity
+  protected def freshEntity(clazz: TypeTag[_]): Entity
 
   /** Stores or updates the entity in the data store
     *
@@ -51,11 +48,11 @@ trait AbstractDatastore[+WriteResult, Entity] { self =>
 
   /** Returns a new query that will search for the objects of type U
     *
-    * @param clazz typetag of the class of interest
+    * @param tpeTg typetag of the class of interest
     * @tparam U type of the entities of interest
     * @return the new query
     */
-  def query[U](implicit clazz: ClassTag[U]): QueryType[U]
+  def query[U](implicit tpeTg: TypeTag[U]): QueryType[U]
 
   def delete(entity: Entity): Unit
 
@@ -94,6 +91,6 @@ trait AbstractDatastore[+WriteResult, Entity] { self =>
     * @tparam U static type of the object
     * @return result of the datastores write operation
     */
-  def put[U](obj: U)(implicit serializer: EntitySerializer[U], clazz: ClassTag[U]): WriteResult =
-    putEntity(serializer.serialize(obj, newWriter(freshEntity(clazz))).result)
+  def put[U](obj: U)(implicit serializer: EntitySerializer[U], tpeTg: TypeTag[U]): WriteResult =
+    putEntity(serializer.serialize(obj, newWriter(freshEntity(tpeTg))).result)
 }

@@ -3,10 +3,15 @@ package scalads.mongodb
 import scalads.core._
 import com.mongodb.{BasicDBList, BasicDBObject, DBObject}
 import scalads.core.Projection
-import scala.reflect.ClassTag
+import scala.reflect.runtime.universe.TypeTag
 import scalads.core.SortDirection.{ASC, DSC}
 import scala.annotation.tailrec
 import org.bson.types.BasicBSONList
+import scalads.util.AnnotationHelpers._
+import scala.Some
+import scalads.core.Projection
+import scalads.core.CompositeFilter
+import scalads.core.SingleFilter
 
 /**
  * @author Bryce Anderson
@@ -15,7 +20,7 @@ import org.bson.types.BasicBSONList
 
 
 class MongoQuery[U] private(val ds: MongoDatastore,
-                            tpe: ClassTag[U],
+                            tpe: TypeTag[U],
                             maxResults: Int,
                             filters: List[Filter],
                             sorts: List[DBObject],
@@ -24,14 +29,14 @@ class MongoQuery[U] private(val ds: MongoDatastore,
   type Repr = MongoQuery[U]
 
   // Generates a fresh query
-  def this(ds: MongoDatastore, tpe: ClassTag[U]) = this(ds, tpe, 0, Nil, Nil, Nil)
+  def this(ds: MongoDatastore, tpe: TypeTag[U]) = this(ds, tpe, 0, Nil, Nil, Nil)
 
   private def makePath(lst: List[String], lastOp: (String) => DBObject): DBObject = lst match {
     case last::Nil => lastOp(last)
     case h::t => new BasicDBObject(h, makePath(t, lastOp))
   }
 
-  private def mkTypeFilter = new BasicDBObject().append(MongoDatastore.dbTypeField, tpe.runtimeClass.getName)
+  private def mkTypeFilter = new BasicDBObject(MongoDatastore.dbTypeField,  getName(tpe))
 
   /** Generated a new query that will filter the results based on the filter
     *

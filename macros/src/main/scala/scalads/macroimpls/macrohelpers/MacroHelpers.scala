@@ -3,12 +3,20 @@ package scalads.macroimpls.macrohelpers
 import scala.reflect.macros.Context
 import java.util.Date
 
+import scalads.annotations.Rename
+
 
 class MacroHelpers[CTPE <: Context](val c: CTPE) {
 
   import c.universe._
 
   def macroError(msg: String) = { c.error(c.enclosingPosition, msg); throw new Exception }
+
+  def getNameOption(sym: Symbol): Option[String] = sym.annotations.collect {
+    case Annotation(tpe, Literal(Constant(name: String))::Nil, _) if tpe =:= typeOf[Rename] =>
+      println(s"Found annotation name: $name")
+      name
+  }.headOption
 
   // For building objects that take type parameters
   def typeArgumentTree(t: c.Type): c.Tree = t match {

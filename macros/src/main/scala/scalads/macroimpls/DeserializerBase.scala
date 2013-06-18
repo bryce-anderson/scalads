@@ -15,7 +15,7 @@ import scalads.exceptions.MappingException
 class DeserializerBase[CONTEXT <: Context](val c: CONTEXT) {
 
   val helpers = new MacroHelpers[c.type](c)
-  import helpers.{isPrimitive, typeArgumentTree}
+  import helpers.{isPrimitive, typeArgumentTree, getNameOption}
 
   import c.universe._
 
@@ -211,7 +211,7 @@ class DeserializerBase[CONTEXT <: Context](val c: CONTEXT) {
         case (pSym, index) =>
           // Change out the types if it has type parameters
           val pTpe = pSym.typeSignature.substituteTypes(sym.asClass.typeParams, tpeArgs)
-          val fieldName = c.literal(pSym.name.decoded)
+          val fieldName = c.literal(getNameOption(pSym).getOrElse(pSym.name.decoded))
 
           // If param has defaults, try to find the val in map, or call
           // default evaluation from its companion object

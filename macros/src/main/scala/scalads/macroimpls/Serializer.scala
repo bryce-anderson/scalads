@@ -15,40 +15,12 @@ import scalads.core.EntityBacker
 // Intended to be the serialization side of the class builder
 object Serializer {
 
-//  def serializeObject[U: c.WeakTypeTag](c: Context)(obj: c.Expr[U], parent: c.Expr[Key]): c.Expr[Entity] = {
-//    val helpers = new MacroHelpers[c.type](c)
-//
-//    import helpers.{classNameExpr}
-//
-//    import c.universe._
-//    val tpe = weakTypeOf[U]
-//    val name = classNameExpr(tpe)
-//
-//    val serializeExpr = serializeToEntityImpl[U](c)(obj, c.Expr[Entity](Ident(newTermName("e"))))
-//
-//    reify {
-//      val e = new Entity(name.splice, parent.splice)
-//      serializeExpr.splice
-//      e
-//    }
-//  }
-//
-//  def serializeToEntity[U](obj: U, entity: Entity): Unit = macro serializeToEntityImpl[U]
-//  def serializeToEntityImpl[U: c.WeakTypeTag](c: Context)(obj: c.Expr[U], entity: c.Expr[Entity]): c.Expr[Unit] = {
-//    import c.universe._
-//
-//   reify{
-//     val writer = new GAEWriter(entity.splice)
-//     serializeImpl(c)(obj, c.Expr[GAEWriter](Ident(newTermName("writer")))).splice
-//   }
-//  }
-
   /* ----------------- Macro Serializer ----------------- */
   def serialize[U](obj: U, writer: Writer[_]) = macro serializeImpl[U]
   def serializeImpl[U: c.WeakTypeTag](c: Context)(obj: c.Expr[U], writer: c.Expr[Writer[_]]): c.Expr[Unit] = {
     val helpers = new MacroHelpers[c.type](c)
 
-    import helpers.{isPrimitive, macroError, classNameExpr}
+    import helpers.{isPrimitive, macroError, classNameExpr, getNameOption}
     import c.universe._
 
     val primitiveTypes =
@@ -112,10 +84,13 @@ object Serializer {
       // Completely flatten this list of constructors, accessing doesn't need the multiple applies
       val ctorTrees = oldTpe.member(nme.CONSTRUCTOR).asMethod.paramss.flatMap{ _.flatMap{ pSym =>
         if (pSym.isPublic) {
+
           val tpe = pSym.typeSignature.substituteTypes(sym.asClass.typeParams, tpeArgs)
           val fieldName = pSym.name.decoded.trim
           val fieldPath = Select(path, newTermName(fieldName))
-          val startFieldExpr =  reify{writer.splice.startField(c.literal(fieldName).splice)}
+          val startFieldExpr =  reify{
+            writer.splice.startField(c.literal(getNameOption(pSym).getOrElse(fieldName)).splice)
+          }
           startFieldExpr.tree::buildTpe(tpe, fieldPath)::Nil
         } else Nil
       }}

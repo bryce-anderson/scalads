@@ -8,7 +8,7 @@ package scalads.mongodb
 import com.mongodb._
 
 import scalads.AbstractDatastore
-import scala.reflect.ClassTag
+import scala.reflect.runtime.universe.TypeTag
 import scalads.writers.Writer
 import scalads.readers.ObjectReader
 import org.bson.types.ObjectId
@@ -37,8 +37,10 @@ class MongoDatastore(protected[mongodb] val coll: DBCollection, concern: WriteCo
     case id: ObjectId => new BasicDBObject().append(MongoDatastore.id, id)
   }
 
-  protected def freshEntity(clazz: ClassTag[_]): DBObject =
-    new BasicDBObject(MongoDatastore.dbTypeField, clazz.runtimeClass.getName)
+  protected def freshEntity(tpe: TypeTag[_]): DBObject = {
+    import scalads.util.AnnotationHelpers.getName
+    new BasicDBObject(MongoDatastore.dbTypeField, getName(tpe))
+  }
 
   /** Stores or updates the entity in the data store
     *
@@ -70,11 +72,11 @@ class MongoDatastore(protected[mongodb] val coll: DBCollection, concern: WriteCo
 
   /** Returns a new query that will search for the objects of type U
     *
-    * @param clazz typetag of the class of interest
+    * @param tpeTg typetag of the class of interest
     * @tparam U type of the entities of interest
     * @return the new query
     */
-  def query[U](implicit clazz: ClassTag[U]): MongoQuery[U] = new MongoQuery[U](self, clazz)
+  def query[U](implicit tpeTg: TypeTag[U]): MongoQuery[U] = new MongoQuery[U](self, tpeTg)
 
   def delete(entity: DBObject) { coll.remove(entity, concern) }
 }

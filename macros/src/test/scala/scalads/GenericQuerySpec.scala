@@ -9,9 +9,18 @@ import scalads.core.{EntityBacker, QueryIterator}
  * @author Bryce Anderson
  *         Created on 6/16/13
  */
-trait GenericQuerySpec[K, E] extends FlatSpec with ShouldMatchers  {
 
-  def ds: AbstractDatastore[K, E]
+
+trait GenericQuerySpec extends FlatSpec with ShouldMatchers  {
+
+  case class  Test(in: Int, in2: String)
+  case class Compound(in: Int, in2: Test)
+  case class Types(in1: Int, in2: Long, in3: Float, in4: Double, in5: String, in6: Date)
+  case class SComp(comp1: Int, comp2: Compound)
+  case class WithList(number: Int, list: List[Int])
+
+
+  def ds: AbstractDatastore[_, _]
   def backend: String
 
   def addTests() = {
@@ -22,10 +31,6 @@ trait GenericQuerySpec[K, E] extends FlatSpec with ShouldMatchers  {
   }
 
   addTests()
-
-  case class  Test(in: Int, in2: String)
-  case class Compound(in: Int, in2: Test)
-  case class Types(in1: Int, in2: Long, in3: Float, in4: Double, in5: String, in6: Date)
 
   (backend + "Query") should "compile filters"  in {
     val query = ds.query[Test]
@@ -79,7 +84,7 @@ trait GenericQuerySpec[K, E] extends FlatSpec with ShouldMatchers  {
 
     results.length should equal (3)
 
-    val results2: QueryIterator[Test with EntityBacker[Test, E], E] = ds.query[Test]
+    val results2: QueryIterator[Test with EntityBacker[Test, _], _] = ds.query[Test]
       .limit(3)
       .getIterator
 
@@ -154,7 +159,6 @@ trait GenericQuerySpec[K, E] extends FlatSpec with ShouldMatchers  {
   }
 
   it should "allow intermediate objects" in {
-    case class SComp(comp1: Int, comp2: Compound)
     val comp = SComp(22, Compound(1, Test(1, "one")))
     ds.put(comp)
 
@@ -169,7 +173,6 @@ trait GenericQuerySpec[K, E] extends FlatSpec with ShouldMatchers  {
   }
 
   it should "allow intermediate lists" in {
-    case class WithList(number: Int, list: List[Int])
     val wl = WithList(1, 1::2::3::Nil)
     ds.put(wl)
 
@@ -182,6 +185,7 @@ trait GenericQuerySpec[K, E] extends FlatSpec with ShouldMatchers  {
     result1._1 should equal(1)
     result1._2 should equal(2::3::Nil)
   }
+
 //
 //  it should "print stuff" in {
 //    case class WithList(number: Int, list: List[Int])
