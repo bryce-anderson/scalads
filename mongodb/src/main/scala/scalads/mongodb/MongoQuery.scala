@@ -20,7 +20,7 @@ import scalads.core.SingleFilter
 
 
 class MongoQuery[U] private(val ds: MongoDatastore,
-                            tpe: TypeTag[U],
+                            val transformer: MongoTransformer[U],
                             maxResults: Int,
                             filters: List[Filter],
                             sorts: List[DBObject],
@@ -29,14 +29,14 @@ class MongoQuery[U] private(val ds: MongoDatastore,
   type Repr = MongoQuery[U]
 
   // Generates a fresh query
-  def this(ds: MongoDatastore, tpe: TypeTag[U]) = this(ds, tpe, 0, Nil, Nil, Nil)
+  def this(ds: MongoDatastore, tpe: MongoTransformer[U]) = this(ds, tpe, 0, Nil, Nil, Nil)
 
   private def makePath(lst: List[String], lastOp: (String) => DBObject): DBObject = lst match {
     case last::Nil => lastOp(last)
     case h::t => new BasicDBObject(h, makePath(t, lastOp))
   }
 
-  private def mkTypeFilter = new BasicDBObject(MongoDatastore.dbTypeField,  getName(tpe))
+  private def mkTypeFilter = new BasicDBObject(MongoDatastore.dbTypeField,  transformer.typeName)
 
   /** Generated a new query that will filter the results based on the filter
     *
@@ -44,7 +44,7 @@ class MongoQuery[U] private(val ds: MongoDatastore,
     * @return new query with the filter applied
     */
   def setFilter(filter: Filter): MongoQuery[U] =
-    new MongoQuery[U](ds, tpe, maxResults, filter::filters, sorts, projections)
+    new MongoQuery[U](ds, transformer, maxResults, filter::filters, sorts, projections)
 
   /** Sort the results based on the projection and sorting direction
     *
@@ -58,7 +58,7 @@ class MongoQuery[U] private(val ds: MongoDatastore,
       case DSC => -1
     }
     val obj = makePath(field.path, str => new BasicDBObject(str, order))
-    new MongoQuery[U](ds, tpe, maxResults, filters, obj::sorts, projections)
+    new MongoQuery[U](ds, transformer, maxResults, filters, obj::sorts, projections)
   }
 
   /** method to add the intended projections. Intended to be called immediately before mapIterator by the project macro
@@ -67,7 +67,7 @@ class MongoQuery[U] private(val ds: MongoDatastore,
     * @return the query with the applied projection.
     */
   protected def addProjections(projs: List[Projection]): MongoQuery[U] =
-    new MongoQuery[U](ds, tpe, maxResults, filters, sorts, projs:::projections)
+    new MongoQuery[U](ds, transformer, maxResults, filters, sorts, projs:::projections)
 
 
   // generates the DBObject for a filter
@@ -148,5 +148,5 @@ class MongoQuery[U] private(val ds: MongoDatastore,
   }
 
   def limit(size: Int): MongoQuery[U] =
-    new MongoQuery[U](ds, tpe, size, filters, sorts, projections)
+    new MongoQuery[U](ds, transformer, size, filters, sorts, projections)
 }

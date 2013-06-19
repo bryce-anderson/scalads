@@ -192,7 +192,7 @@ class GAEQuerySpec extends GAESpecTemplate { // with GenericQuerySpec {
 
   case class FieldRenamed(@Rename("foo") in: Int)
 
-  "Mongo Specific Queries" should "store renamed types" in {
+  "GAE Specific Queries" should "store renamed types" in {
 
     ds.put(ClassRenamed(1))
 
