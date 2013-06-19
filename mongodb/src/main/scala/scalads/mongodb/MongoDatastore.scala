@@ -8,13 +8,8 @@ package scalads.mongodb
 import com.mongodb._
 
 import scalads.AbstractDatastore
-import scala.reflect.runtime.universe.TypeTag
-import scalads.writers.Writer
-import scalads.readers.ObjectReader
 import org.bson.types.ObjectId
 import scalads.core.EntityBacker
-import scalads.mongodb.readers.BsonObjectReader
-import scalads.mongodb.writers.MongoWriter
 
 class MongoDatastore(protected[mongodb] val collection: DBCollection, concern: WriteConcern = new WriteConcern())
         extends AbstractDatastore[WriteResult, DBObject] { self =>
@@ -34,7 +29,7 @@ class MongoDatastore(protected[mongodb] val collection: DBCollection, concern: W
     * @param old entity that will be replaced
     * @return new entity that will replace the old one in the datastore
     */
-  protected def replacementEntity(old: DBObject): DBObject = old.get(MongoDatastore.id) match {
+  def replacementEntity(old: DBObject): DBObject = old.get(MongoDatastore.id) match {
     case null => sys.error("Cannot replace entity: doesn't have key.")
     case id: ObjectId => new BasicDBObject().append(MongoDatastore.id, id)
   }

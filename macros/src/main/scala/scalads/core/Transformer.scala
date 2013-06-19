@@ -5,12 +5,17 @@ import scalads.writers.Writer
 import scalads.macroimpls.{EntityBuilder, EntitySerializer}
 
 import scala.reflect.runtime.universe.TypeTag
-import scalads.AbstractDatastore
 
 /**
  * @author Bryce Anderson
  *         Created on 6/18/13
  */
+
+/** Provides the methods that operate on the type U to generate writers, readers and new entities.
+  *
+  * @tparam U type to operate on
+  * @tparam Entity type of entity for the datastore
+  */
 trait Transformer[U, Entity] {
 
   /** Factory method for generating object readers

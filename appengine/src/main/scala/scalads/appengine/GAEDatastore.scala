@@ -5,11 +5,9 @@ import scala.collection.JavaConverters._
 import scalads.AbstractDatastore
 
 import com.google.appengine.api.datastore.{Entity, Key,
-                      DatastoreServiceFactory, DatastoreService, Query => GQuery}
-import scala.reflect.runtime.universe.TypeTag
-import scalads.core.EntityBacker
+            DatastoreServiceFactory, DatastoreService, Query => GQuery}
 
-import scalads.util.AnnotationHelpers.getName
+import scalads.core.EntityBacker
 
 /**
  * @author Bryce Anderson
@@ -24,12 +22,19 @@ class GAEDatastore(val collection: DatastoreService) extends AbstractDatastore[K
     putEntity(writer.result)
   }
 
-  protected def replacementEntity(old: Entity): Entity = new Entity(old.getKey)
+  def replacementEntity(old: Entity): Entity = new Entity(old.getKey)
 
   type QueryType[U] = GAEQuery[U]
 
   type TFactory[U] = GAETransformer[U]
 
+  /** Attempts to perform the operations within a app engine transaction.
+    * Code executed in the block must conform to the requirements of the GAE datastore
+   *
+   * @param f thunk to execute
+   * @tparam U return type
+   * @return the same value as returned by the thunk f
+   */
   def withTransaction[U](f: => U): U = {
     val txn = collection.beginTransaction()
     try { val a = f; txn.commit(); a }
@@ -43,7 +48,7 @@ class GAEDatastore(val collection: DatastoreService) extends AbstractDatastore[K
   def putEntity(entity: Entity): Key = collection.put(entity)
 
   def query[U](implicit transformer: GAETransformer[U]): QueryType[U] = {
-    new GAEQuery[U](self, new GQuery(getName(transformer.typeTag)), transformer)
+    new GAEQuery[U](self, new GQuery(transformer.getName()), transformer)
   }
 
   /** Method overload to let GAEDatastore set parents
@@ -53,11 +58,10 @@ class GAEDatastore(val collection: DatastoreService) extends AbstractDatastore[K
     * @tparam U type of the object you want to store
     * @return key of the newly persisted entity
     */
-  def put[U](obj: U, parent: Key)(implicit transformer: GAETransformer[U], tpeTg: TypeTag[U]): Key = {
-    val writer = transformer.newWriter(new Entity(getName(tpeTg), parent))
+  def put[U](obj: U, parent: Key)(implicit transformer: GAETransformer[U]): Key = {
+    val writer = transformer.newWriter(new Entity(transformer.getName(), parent))
     putEntity(transformer.serializer.serialize(obj, writer).result)
   }
-
 }
 
 object GAEDatastore {

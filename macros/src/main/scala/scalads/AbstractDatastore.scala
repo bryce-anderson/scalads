@@ -1,13 +1,6 @@
 package scalads
 
-import scala.collection.mutable.ListBuffer
-import scalads.readers.ObjectReader
-import scalads.macroimpls.EntitySerializer
-
 import scalads.core._
-import scalads.writers.Writer
-
-import scala.reflect.runtime.universe.TypeTag
 
 /**
  * @author Bryce Anderson
@@ -25,7 +18,7 @@ trait AbstractDatastore[+WriteResult, Entity] { self =>
 
   type TFactory[U] <: Transformer[U, Entity]
 
- // type TFactory[U] <: Transformer[U, Entity]
+  private[scalads] def replacementEntity(old: Entity): Entity
 
   /** Stores or updates the entity in the data store
     *
@@ -33,20 +26,6 @@ trait AbstractDatastore[+WriteResult, Entity] { self =>
     * @return result of storing the entity
     */
   def putEntity(entity: Entity): WriteResult
-//
-//  /** Factory method for generating object readers
-//    *
-//    * @param entity datastore entity intended to be wrapped by the reader
-//    * @return appropriate object reader for the type of entity
-//    */
-//  private[scalads] def newReader(entity: Entity): ObjectReader
-//
-//  /** Generates a writer which will store the data in the provided entity
-//    *
-//    * @param entity storage container for the writer to place data in
-//    * @return the writer that wraps the entity
-//    */
-//  private[scalads] def newWriter(entity: Entity): Writer[Entity]
 
   /** Returns a new query that will search for the objects of type U
     *
@@ -57,28 +36,7 @@ trait AbstractDatastore[+WriteResult, Entity] { self =>
 
   def delete(entity: Entity): Unit
 
-  /** Creates a new entity which will replace the current one once persisted
-    *
-    * @param old entity that will be replaced
-    * @return new entity that will replace the old one in the datastore
-    */
-  protected def replacementEntity(old: Entity): Entity
-
   def delete(entity: EntityBacker[_, Entity]):Unit = delete(entity.ds_entity)
-
-
-//  // TODO: Probably belongs in the Query object
-//  def update[U](it: QueryIterator[U with EntityBacker[U, Entity], Entity])(f: U => Option[U]) {
-//    val newEntities = new ListBuffer[Entity]
-//    it.foreach { i =>
-//      f(i).foreach{ r =>
-//          val newEntity = replacementEntity(i.ds_entity)
-//          i.ds_serialize(r, newWriter(newEntity))
-//          newEntities += newEntity
-//      }
-//    }
-//    put(newEntities.result(): Iterable[Entity])
-//  }
 
   def put(obj: EntityBacker[_, Entity]): WriteResult =  putEntity(obj.ds_entity)
 

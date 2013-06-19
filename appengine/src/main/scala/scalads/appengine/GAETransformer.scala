@@ -26,6 +26,8 @@ trait GAETransformer[U] extends Transformer[U, Entity] {
     * @return the writer that wraps the entity
     */
   def newWriter(entity: Entity) = new GAEWriter(entity)
+
+  def getName() = scalads.util.AnnotationHelpers.getName(typeTag)
 }
 
 object GAETransformer {

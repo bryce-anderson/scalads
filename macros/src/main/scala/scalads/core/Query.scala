@@ -6,6 +6,7 @@ import language.experimental.macros
 import scalads.macroimpls.{EntityBuilder, QueryMacros}
 import scalads.AbstractDatastore
 import scalads.readers.ObjectReader
+import scala.collection.mutable.ListBuffer
 
 /**
  * @author Bryce Anderson
@@ -21,6 +22,29 @@ trait Query[U, E] { self =>
   def ds: DS
 
   protected def transformer: Transformer[U, E]
+
+  /** Update the results of the query with the supplied function
+    *
+    * @param f function applied to the returned entities to either update or ignore the entry
+    */
+  def update(f: U => Option[U]) {
+    val it = getIterator()
+    val newEntities = new ListBuffer[E]
+    it.foreach { i =>
+      f(i).foreach{ r =>
+        val newEntity = ds.replacementEntity(i.ds_entity)
+        i.ds_serialize(r, transformer.newWriter(newEntity))
+        newEntities += newEntity
+      }
+    }
+    ds.put(newEntities.result(): Iterable[E])
+  }
+
+  /** Update the results of the query with the supplied function
+    *
+    * @param f function applied to the returned entities to either update or ignore the entry
+    */
+  def update(f: PartialFunction[U, U]): Unit = update(f.lift)
 
   /** Generated a new query that will filter the results based on the filter
     *
@@ -42,7 +66,6 @@ trait Query[U, E] { self =>
     * @param projs the projections to add
     * @return the query with the applied projection.
     */
-
   protected def addProjections(projs: List[Projection]): Repr
 
   def runQuery: Iterator[E]
@@ -56,7 +79,7 @@ trait Query[U, E] { self =>
 
   def projectAndMap[T](projs: List[Projection], f: (DS, ObjectReader) => T): QueryIterator[T, E] = {
     val it = addProjections(projs).runQuery
-    new QueryIterator[T, E]{
+    new QueryIterator[T, E] {
       def hasNext: Boolean = it.hasNext
       def nextEntity(): E = it.next()
       def next() = f(ds, transformer.newReader(nextEntity()))
