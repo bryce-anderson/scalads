@@ -20,7 +20,7 @@ trait GenericQuerySpec extends FlatSpec with ShouldMatchers  {
 //  case class WithList(number: Int, list: List[Int])
 //
 //
-//  def ds: AbstractDatastore[_, _]
+//  def ds: Datastore[_, _]
 //  def backend: String
 //
 //  def addTests() = {

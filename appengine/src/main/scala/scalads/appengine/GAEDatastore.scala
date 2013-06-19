@@ -2,7 +2,7 @@ package scalads.appengine
 
 import scala.collection.JavaConverters._
 
-import scalads.AbstractDatastore
+import scalads.Datastore
 
 import com.google.appengine.api.datastore.{Entity, Key,
             DatastoreServiceFactory, DatastoreService, Query => GQuery}
@@ -13,7 +13,7 @@ import scalads.core.EntityBacker
  * @author Bryce Anderson
  *         Created on 6/9/13
  */
-class GAEDatastore(val collection: DatastoreService) extends AbstractDatastore[Key, Entity] { self =>
+class GAEDatastore(val collection: DatastoreService) extends Datastore[Key, Entity] { self =>
 
 
   def update[U, V](theOld: U with EntityBacker[U, Entity], theNew: U): Key = {

@@ -6,7 +6,7 @@ import scalads.core._
  * @author Bryce Anderson
  *         Created on 5/31/13
  */
-trait AbstractDatastore[+WriteResult, Entity] { self =>
+trait Datastore[+WriteResult, Entity] { self =>
 
   def update[U,V](theOld: U with EntityBacker[U, Entity], theNew: U): WriteResult
 

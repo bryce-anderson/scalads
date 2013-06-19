@@ -1,7 +1,6 @@
 package appengine
 
-import scalads.{AbstractDatastore, GenericQuerySpec}
-import com.google.appengine.api.datastore.{FetchOptions, Query, Key, Entity}
+import com.google.appengine.api.datastore.{FetchOptions, Query}
 import scalads.appengine.GAEDatastore
 import scalads.annotations.Rename
 import java.util.Date
@@ -206,7 +205,6 @@ class GAEQuerySpec extends GAESpecTemplate { // with GenericQuerySpec {
   }
 
   it should "store renamed fields" in {
-    import scalads.util.AnnotationHelpers.getName
 
     ds.put(FieldRenamed(1))
 

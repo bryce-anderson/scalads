@@ -27,7 +27,7 @@ trait QueryIterator[+U, E]
 }
 
 object QueryIterator {
-  def apply[A, E](datastore: AbstractDatastore[_, E], it: Iterator[E], transformer: Transformer[A, E]) =
+  def apply[A, E](datastore: Datastore[_, E], it: Iterator[E], transformer: Transformer[A, E]) =
     new QueryIterator[A with EntityBacker[A, E], E] {
       def hasNext: Boolean = it.hasNext
 

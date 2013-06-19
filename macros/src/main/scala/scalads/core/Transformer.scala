@@ -38,5 +38,4 @@ trait Transformer[U, Entity] {
 
   def deserializer: EntityBuilder[U, Entity]
 
-  def typeTag: TypeTag[U]
 }

@@ -7,12 +7,12 @@ package scalads.mongodb
 
 import com.mongodb._
 
-import scalads.AbstractDatastore
+import scalads.Datastore
 import org.bson.types.ObjectId
 import scalads.core.EntityBacker
 
 class MongoDatastore(protected[mongodb] val collection: DBCollection, concern: WriteConcern = new WriteConcern())
-        extends AbstractDatastore[WriteResult, DBObject] { self =>
+        extends Datastore[WriteResult, DBObject] { self =>
 
   type QueryType[U] = MongoQuery[U]
 

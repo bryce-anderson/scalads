@@ -34,16 +34,21 @@ trait MongoTransformer[U] extends Transformer[U, DBObject] {
     new BasicDBObject(MongoDatastore.dbTypeField, getName(typeTag))
   }
 
+  def typeTag: TypeTag[U]
+
   def typeName = scalads.util.AnnotationHelpers.getName(typeTag)
 }
 
 object MongoTransformer {
-  implicit def getTrans[U](implicit des: EntityBuilder[U, DBObject], ser: EntitySerializer[U], tag: TypeTag[U]) =
-  new MongoTransformer[U] {
-    def serializer = ser
+  implicit def getMongoTrans[U](implicit des: EntityBuilder[U, DBObject],
+                                ser: EntitySerializer[U],
+                                tag: TypeTag[U]) =
+    new MongoTransformer[U] {
 
-    def deserializer = des
+      def serializer = ser
 
-    def typeTag = tag
-  }
+      def deserializer = des
+
+      def typeTag = tag
+    }
 }
