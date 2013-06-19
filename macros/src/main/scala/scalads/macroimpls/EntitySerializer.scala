@@ -11,7 +11,6 @@ import scala.reflect.macros.Context
  */
 
 trait EntitySerializer[U] {
-  def clazz: Class[U]
   def serialize[A](obj: U, writer: Writer[A]): Writer[A]
 }
 

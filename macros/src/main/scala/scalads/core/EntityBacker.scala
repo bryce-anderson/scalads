@@ -20,15 +20,17 @@ trait EntityBacker[U, E] { self: U =>
 
   def ds: AbstractDatastore[_, E]
 
+  def transformer: Transformer[U, E]
+
   def ds_entity: E
 
   def ds_update(): Unit = {
-    ds_serialize(self, ds.newWriter(ds_entity))
+    ds_serialize(self, transformer.newWriter(ds_entity))
     ds.put(self)
   }
 
   def ds_updateWith(obj: U): Unit = {
-    val writer = ds.newWriter(ds_entity)
+    val writer = transformer.newWriter(ds_entity)
     ds_serialize(obj, writer)
     ds.putEntity(writer.result)
   }

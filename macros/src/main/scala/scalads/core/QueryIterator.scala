@@ -10,44 +10,30 @@ import scalads.macroimpls.EntityBuilder
  *         Created on 6/1/13
  */
 
-trait QueryIterator[+A, E]
-     extends Iterator[A] { self =>
-
-  type DS = AbstractDatastore[_, E]
-
-  def ds: DS
-
-  val deserializer: (DS, ObjectReader) => A
+trait QueryIterator[+U, E]
+     extends Iterator[U] { self =>
 
   def nextEntity(): E
 
-  def next(): A = deserializer(ds, ds.newReader(nextEntity()))
+  def next(): U
 
-  def nextWithEntity(): (E, A) = {
-    val entity = nextEntity()
-    (entity, deserializer(ds, ds.newReader(entity)))
-  }
-
-  override def map[Z](f: (A) => Z): QueryIterator[Z,E] = new QueryIterator[Z,E] {
+  override def map[Z](f: (U) => Z): QueryIterator[Z,E] = new QueryIterator[Z,E] {
     def hasNext = self.hasNext
 
-    def ds = self.ds
-
-    val deserializer: (DS, ObjectReader) => Z = ((ds, r) => f(self.deserializer(ds, r)))
-
     def nextEntity() = self.nextEntity()
+
+    def next(): Z = f(self.next())
   }
 }
 
 object QueryIterator {
-  def apply[A, E](datastore: AbstractDatastore[_, E], it: Iterator[E])(f: (AbstractDatastore[_, E], ObjectReader) => A) =
-    new QueryIterator[A, E] {
+  def apply[A, E](datastore: AbstractDatastore[_, E], it: Iterator[E], transformer: Transformer[A, E]) =
+    new QueryIterator[A with EntityBacker[A, E], E] {
       def hasNext: Boolean = it.hasNext
 
-      def ds = datastore
-
-      val deserializer: (DS, ObjectReader) => A = f
-
       def nextEntity(): E = it.next()
+
+      def next(): A with EntityBacker[A, E] =
+        transformer.deserializer.deserialize(datastore, transformer, nextEntity())
     }
 }

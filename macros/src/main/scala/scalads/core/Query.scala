@@ -20,6 +20,8 @@ trait Query[U, E] { self =>
 
   def ds: DS
 
+  protected def transformer: Transformer[U, E]
+
   /** Generated a new query that will filter the results based on the filter
     *
     * @param filter filter to be applied to the query
@@ -56,15 +58,12 @@ trait Query[U, E] { self =>
     val it = addProjections(projs).runQuery
     new QueryIterator[T, E]{
       def hasNext: Boolean = it.hasNext
-      val ds: DS = self.ds
-      val deserializer: (DS, ObjectReader) => T = f
       def nextEntity(): E = it.next()
+      def next() = f(ds, transformer.newReader(nextEntity()))
     }
   }
 
-  def getIterator(implicit deserializer: EntityBuilder[U, E]): QueryIterator[U with EntityBacker[U, E], E] = QueryIterator(ds, runQuery){ (ds, reader) =>
-    deserializer.deserialize(ds, reader)
-  }
+  def getIterator(): QueryIterator[U with EntityBacker[U, E], E] = QueryIterator(ds, runQuery, transformer)
 
   def mapIterator[T](f: (DS, ObjectReader) => T): QueryIterator[T, E] = projectAndMap(Nil, f)
 

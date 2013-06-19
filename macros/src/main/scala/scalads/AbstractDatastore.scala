@@ -23,7 +23,9 @@ trait AbstractDatastore[+WriteResult, Entity] { self =>
     */
   type QueryType[U] <: Query[U, Entity]
 
-  protected def freshEntity(clazz: TypeTag[_]): Entity
+  type TFactory[U] <: Transformer[U, Entity]
+
+ // type TFactory[U] <: Transformer[U, Entity]
 
   /** Stores or updates the entity in the data store
     *
@@ -31,28 +33,27 @@ trait AbstractDatastore[+WriteResult, Entity] { self =>
     * @return result of storing the entity
     */
   def putEntity(entity: Entity): WriteResult
-
-  /** Factory method for generating object readers
-    *
-    * @param entity datastore entity intended to be wrapped by the reader
-    * @return appropriate object reader for the type of entity
-    */
-  private[scalads] def newReader(entity: Entity): ObjectReader
-
-  /** Generates a writer which will store the data in the provided entity
-    *
-    * @param entity storage container for the writer to place data in
-    * @return the writer that wraps the entity
-    */
-  private[scalads] def newWriter(entity: Entity): Writer[Entity]
+//
+//  /** Factory method for generating object readers
+//    *
+//    * @param entity datastore entity intended to be wrapped by the reader
+//    * @return appropriate object reader for the type of entity
+//    */
+//  private[scalads] def newReader(entity: Entity): ObjectReader
+//
+//  /** Generates a writer which will store the data in the provided entity
+//    *
+//    * @param entity storage container for the writer to place data in
+//    * @return the writer that wraps the entity
+//    */
+//  private[scalads] def newWriter(entity: Entity): Writer[Entity]
 
   /** Returns a new query that will search for the objects of type U
     *
-    * @param tpeTg typetag of the class of interest
     * @tparam U type of the entities of interest
     * @return the new query
     */
-  def query[U](implicit tpeTg: TypeTag[U]): QueryType[U]
+  def query[U: TFactory]: QueryType[U]
 
   def delete(entity: Entity): Unit
 
@@ -65,17 +66,19 @@ trait AbstractDatastore[+WriteResult, Entity] { self =>
 
   def delete(entity: EntityBacker[_, Entity]):Unit = delete(entity.ds_entity)
 
-  def update[U](it: QueryIterator[U with EntityBacker[U, Entity], Entity])(f: U => Option[U]) {
-    val newEntities = new ListBuffer[Entity]
-    it.foreach { i =>
-      f(i).foreach{ r =>
-          val newEntity = replacementEntity(i.ds_entity)
-          i.ds_serialize(r, newWriter(newEntity))
-          newEntities += newEntity
-      }
-    }
-    put(newEntities.result(): Iterable[Entity])
-  }
+
+//  // TODO: Probably belongs in the Query object
+//  def update[U](it: QueryIterator[U with EntityBacker[U, Entity], Entity])(f: U => Option[U]) {
+//    val newEntities = new ListBuffer[Entity]
+//    it.foreach { i =>
+//      f(i).foreach{ r =>
+//          val newEntity = replacementEntity(i.ds_entity)
+//          i.ds_serialize(r, newWriter(newEntity))
+//          newEntities += newEntity
+//      }
+//    }
+//    put(newEntities.result(): Iterable[Entity])
+//  }
 
   def put(obj: EntityBacker[_, Entity]): WriteResult =  putEntity(obj.ds_entity)
 
@@ -91,6 +94,6 @@ trait AbstractDatastore[+WriteResult, Entity] { self =>
     * @tparam U static type of the object
     * @return result of the datastores write operation
     */
-  def put[U](obj: U)(implicit serializer: EntitySerializer[U], tpeTg: TypeTag[U]): WriteResult =
-    putEntity(serializer.serialize(obj, newWriter(freshEntity(tpeTg))).result)
+  def put[U](obj: U)(implicit transformer: TFactory[U]): WriteResult =
+    putEntity(transformer.serializer.serialize(obj, transformer.newWriter(transformer.freshEntity())).result)
 }

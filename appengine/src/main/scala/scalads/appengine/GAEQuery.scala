@@ -13,11 +13,7 @@ import com.google.appengine.api.datastore.Query.{Filter => GFilter, CompositeFil
 
 import scala.collection.JavaConverters._
 
-
-import scalads.core.{EntityBacker, Query, Operation,
-        CompositeFilter, Projection, JoinOperation, Filter, SingleFilter}
-
-import scalads.macroimpls.EntityBuilder
+import scalads.core.{Query, Operation, CompositeFilter, Projection, JoinOperation, Filter, SingleFilter}
 
 /**
  * @author Bryce Anderson
@@ -26,21 +22,23 @@ import scalads.macroimpls.EntityBuilder
 
 class GAEQuery[U] private(val ds: GAEDatastore,
                     private val gQuery: GQuery,
+                    protected val transformer: GAETransformer[U],
                     private val fetchOptions: FetchOptions)
                                 extends Query[U, GEntity] { self =>
 
-  def this(ds: GAEDatastore, gQuery: GQuery) = this(ds, gQuery, FetchOptions.Builder.withDefaults())
+  def this(ds: GAEDatastore, gQuery: GQuery, transformer: GAETransformer[U]) =
+    this(ds, gQuery, transformer, FetchOptions.Builder.withDefaults())
 
   type Repr = GAEQuery[U]
 
 
-  override def limit(size: Int) = new GAEQuery[U](ds, gQuery, fetchOptions.limit(size))
+  override def limit(size: Int) = new GAEQuery[U](ds, gQuery, transformer, fetchOptions.limit(size))
 
   def withEndCursor(offset: String) =
-    new GAEQuery[U](ds, gQuery, fetchOptions.endCursor(Cursor.fromWebSafeString(offset)))
+    new GAEQuery[U](ds, gQuery, transformer, fetchOptions.endCursor(Cursor.fromWebSafeString(offset)))
 
   def withStartCursor(offset: String) =
-    new GAEQuery[U](ds, gQuery, fetchOptions.startCursor(Cursor.fromWebSafeString(offset)))
+    new GAEQuery[U](ds, gQuery, transformer, fetchOptions.startCursor(Cursor.fromWebSafeString(offset)))
 
   override def runQuery: Iterator[GEntity] = {
     val result = ds.collection.prepare(gQuery).asQueryResultIterator(fetchOptions).asScala
@@ -64,12 +62,10 @@ class GAEQuery[U] private(val ds: GAEDatastore,
       case CompositeFilter(f1, f2, JoinOperation.OR) =>  CompositeFilterOperator.or(walk(f1), walk(f2))
     }
 
-    new GAEQuery[U](ds, gQuery.setFilter(walk(filter)), fetchOptions)
+    new GAEQuery[U](ds, gQuery.setFilter(walk(filter)), transformer, fetchOptions)
   }
 
-  def withParent(key: Key): Repr = new GAEQuery[U](ds, gQuery.setAncestor(key), fetchOptions)
-
-  private var projections: List[Projection] = Nil
+  def withParent(key: Key): Repr = new GAEQuery[U](ds, gQuery.setAncestor(key), transformer, fetchOptions)
 
   /** method to add the intended projections. Intended to be called immediately before mapIterator by the project macro
     *
@@ -83,6 +79,8 @@ class GAEQuery[U] private(val ds: GAEDatastore,
         return self
     }
 
+    var projections: List[Projection] = Nil
+
     // Make the projections
     val newQuery = projs.foldLeft(gQuery){ (q, proj) =>
       if (!projections.contains(proj)) {
@@ -91,7 +89,7 @@ class GAEQuery[U] private(val ds: GAEDatastore,
           GAEQuery.clazzMap.get(proj.clazz).getOrElse(proj.clazz)))
       } else q
     }
-    new GAEQuery[U](ds, newQuery, fetchOptions)
+    new GAEQuery[U](ds, newQuery, transformer, fetchOptions)
   }
 
   override def sortBy(field: Projection, dir: core.SortDirection): GAEQuery[U] = {
@@ -100,7 +98,7 @@ class GAEQuery[U] private(val ds: GAEDatastore,
       case SDir.ASC => SortDirection.ASCENDING
       case SDir.DSC => SortDirection.DESCENDING
     })
-    new GAEQuery[U](ds, newQuery, fetchOptions)
+    new GAEQuery[U](ds, newQuery, transformer, fetchOptions)
   }
 }
 

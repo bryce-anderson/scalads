@@ -63,21 +63,21 @@ class DatastoreSpec extends GAESpecTemplate {
       .getIterator.length should equal (2)
   }
 
-  it should "update entities" in {
-
-    0 until 10 map { i => ds.put(Thing(i))}
-
-    val it = ds.query[Thing].getIterator
-    ds.update(it){
-      case Thing(i) if (i%2 == 0) => Some(Thing(-2))
-      case _ => None
-    }
-
-    val length = ds.query[Thing]
-      .filter(_.in == -2)
-      .getIterator.length
-
-    length should equal (5)
-
-  }
+//  it should "update entities" in {
+//
+//    0 until 10 map { i => ds.put(Thing(i))}
+//
+//    val it = ds.query[Thing].getIterator
+//    ds.update(it){
+//      case Thing(i) if (i%2 == 0) => Some(Thing(-2))
+//      case _ => None
+//    }
+//
+//    val length = ds.query[Thing]
+//      .filter(_.in == -2)
+//      .getIterator.length
+//
+//    length should equal (5)
+//
+//  }
 }
