@@ -15,9 +15,6 @@ sealed trait Reader {
 }
 
 trait ObjectReader extends Reader {
-  type Entity <: AnyRef
-
-  def entity: Entity
 
   def getKeys: Set[String]
 
@@ -65,8 +62,6 @@ trait ObjectReader extends Reader {
 }
 
 trait ArrayIterator extends Reader {
-  type Entity <: AnyRef
-  def entity: Entity
 
   // Direct forms with default impl based on the option forms
   def hasNext: Boolean

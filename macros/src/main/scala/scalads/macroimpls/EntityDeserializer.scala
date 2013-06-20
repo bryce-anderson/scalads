@@ -15,7 +15,7 @@ import scalads.writers.Writer
 object EntityDeserializer {
 
   def extendWithEntityBacker[U: c.WeakTypeTag, E: c.WeakTypeTag]
-  (c: Context)(ds: c.Expr[Datastore[_, E]], transExpr:c.Expr[Transformer[U, E]], reader: c.Expr[ObjectReader]): c.Expr[U with EntityBacker[U, E]] = {
+  (c: Context)(ds: c.Expr[Datastore[_, E]], transExpr:c.Expr[Transformer[U, E]], reader: c.Expr[ObjectReader], entity: c.Expr[E]): c.Expr[U with EntityBacker[U, E]] = {
     val helpers = new macrohelpers.MacroHelpers[c.type](c)
     import helpers.typeArgumentTree
 
@@ -73,7 +73,7 @@ object EntityDeserializer {
             )
           ),
           // TODO: This will need to be changed as not all datastores will use Entities...
-          ValDef(Modifiers(), newTermName("ds_entity"), TypeTree(weakTypeOf[E]), reify(readerExpr.splice.entity.asInstanceOf[E]).tree): Tree,
+          ValDef(Modifiers(), newTermName("ds_entity"), TypeTree(weakTypeOf[E]), entity.tree): Tree,
           ValDef(Modifiers(), newTermName("ds"), TypeTree(weakTypeOf[Datastore[_, E]]), dsExpr.tree),
           ValDef(Modifiers(), newTermName("transformer"), TypeTree(weakTypeOf[scalads.core.Transformer[U, E]]), transExpr.tree),
           DefDef(Modifiers(), newTermName("ds_serialize"), Nil, List(
