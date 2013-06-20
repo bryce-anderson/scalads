@@ -85,7 +85,7 @@ trait Query[U, E] { self =>
     }
   }
 
-  def getIterator(): QueryIterator[U with EntityBacker[U, E], E] = QueryIterator(ds, runQuery, transformer)
+  def getIterator(): QueryIterator[U with EntityBacker[U, E], E] = QueryIterator[U, E](ds, runQuery, transformer)
 
   def mapIterator[T](f: (DS, ObjectReader) => T): QueryIterator[T, E] = projectAndMap(Nil, f)
 

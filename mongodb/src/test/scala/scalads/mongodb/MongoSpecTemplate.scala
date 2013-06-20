@@ -18,7 +18,7 @@ trait MongoSpecTemplate extends FlatSpec with BeforeAndAfterAll with ShouldMatch
   private lazy val server: MongoServer = new MongoServer(new MemoryBackend())
   private lazy val serverAddress = server.bind()
   private lazy val client = new MongoClient(new ServerAddress(serverAddress))
-  def coll = client.getDB("testdb").getCollection("testcollection")
+  def db = client.getDB("testdb")
 
   override protected def afterAll() {
     client.close()

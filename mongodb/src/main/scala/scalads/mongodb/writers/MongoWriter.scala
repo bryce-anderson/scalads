@@ -5,15 +5,16 @@ import scalads.writers.Writer
 import java.util.Date
 import javax.swing.plaf.basic.BasicButtonListener
 import org.bson.types.BasicBSONList
+import scalads.mongodb.ScalaDSObject
 
 /**
  * @author Bryce Anderson
  *         Created on 6/15/13
  */
 
-class MongoWriter(entity: DBObject) extends Writer[DBObject] {
+class MongoWriter(entity: ScalaDSObject) extends Writer[ScalaDSObject] {
 
-  private var writer: DSWriter = new RootWriter(entity)
+  private var writer: DSWriter = new RootWriter(entity.json)
 
   def result = entity
 

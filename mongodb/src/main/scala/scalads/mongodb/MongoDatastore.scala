@@ -5,23 +5,26 @@ package scalads.mongodb
  *         Created on 6/15/13
  */
 
-import com.mongodb._
+import com.mongodb.{DB, WriteConcern, WriteResult}
+
+import scala.reflect.runtime.universe.TypeTag
 
 import scalads.Datastore
 import org.bson.types.ObjectId
 import scalads.core.EntityBacker
 
-class MongoDatastore(protected[mongodb] val collection: DBCollection, concern: WriteConcern = new WriteConcern())
-        extends Datastore[WriteResult, DBObject] { self =>
+class MongoDatastore(protected[mongodb] val db: DB, concern: WriteConcern = new WriteConcern())
+        extends Datastore[WriteResult, ScalaDSObject] { self =>
 
   type QueryType[U] = MongoQuery[U]
 
   type TFactory[U] = MongoTransformer[U]
 
-  def update[U, V](theOld: U with EntityBacker[U, DBObject], theNew: U): WriteResult = {
+  def update[U, V](theOld: U with EntityBacker[U, ScalaDSObject], theNew: U): WriteResult = {
     val writer = theOld.transformer.newWriter(replacementEntity(theOld.ds_entity))
     theOld.ds_serialize(theNew, writer)
-    collection.update(theOld.ds_entity, writer.result, false, false, concern)
+    db.getCollection(theOld.ds_entity.collection)
+      .update(theOld.ds_entity.json, writer.result.json, false, false, concern)
   }
 
   /** Creates a new entity which will replace the current one once persisted
@@ -29,22 +32,19 @@ class MongoDatastore(protected[mongodb] val collection: DBCollection, concern: W
     * @param old entity that will be replaced
     * @return new entity that will replace the old one in the datastore
     */
-  def replacementEntity(old: DBObject): DBObject = old.get(MongoDatastore.id) match {
-    case null => sys.error("Cannot replace entity: doesn't have key.")
-    case id: ObjectId => new BasicDBObject().append(MongoDatastore.id, id)
-  }
+  def replacementEntity(old: ScalaDSObject): ScalaDSObject = old.getReplacement()
 
   /** Stores or updates the entity in the data store
     *
     * @param entity native entity intended to be stored
     * @return result of storing the entity
     */
-  def putEntity(entity: DBObject): WriteResult = {
-    entity.get(MongoDatastore.id) match {
+  def putEntity(entity: ScalaDSObject): WriteResult = {
+    entity.json.get(MongoDatastore.id) match {
       case id: ObjectId =>
-        collection.update(replacementEntity(entity), entity, true, false, concern)
+        db.getCollection(entity.collection).update(replacementEntity(entity).json, entity.json, true, false, concern)
 
-      case null => collection.insert(entity, concern)
+      case null => db.getCollection(entity.collection).insert(entity.json, concern)
     }
   }
 
@@ -56,13 +56,14 @@ class MongoDatastore(protected[mongodb] val collection: DBCollection, concern: W
     */
   def query[U](implicit trans: MongoTransformer[U]): MongoQuery[U] = new MongoQuery[U](self, trans)
 
-  def delete(entity: DBObject) { collection.remove(entity, concern) }
+  def delete(entity: ScalaDSObject) { db.getCollection(entity.collection).remove(entity.json, concern) }
 }
 
 object MongoDatastore {
-  def apply(coll: DBCollection, concern: WriteConcern = new WriteConcern()) = new MongoDatastore(coll, concern)
-
-  private[mongodb] val dbTypeField = "ds_type"
+  def apply(db: DB, concern: WriteConcern = new WriteConcern()) = new MongoDatastore(db, concern)
 
   private[mongodb] val id = "_id"
+
+  def collectionName[U](implicit typeTag: TypeTag[U]) =
+    scalads.util.AnnotationHelpers.getName(typeTag).replace('.','_')
 }

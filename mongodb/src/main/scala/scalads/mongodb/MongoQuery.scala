@@ -24,7 +24,7 @@ class MongoQuery[U] private(val ds: MongoDatastore,
                             maxResults: Int,
                             filters: List[Filter],
                             sorts: List[DBObject],
-                            projections: List[Projection]) extends Query[U, DBObject] { self =>
+                            projections: List[Projection]) extends Query[U, ScalaDSObject] { self =>
 
   type Repr = MongoQuery[U]
 
@@ -35,8 +35,6 @@ class MongoQuery[U] private(val ds: MongoDatastore,
     case last::Nil => lastOp(last)
     case h::t => new BasicDBObject(h, makePath(t, lastOp))
   }
-
-  private def mkTypeFilter = new BasicDBObject(MongoDatastore.dbTypeField,  transformer.typeName)
 
   /** Generated a new query that will filter the results based on the filter
     *
@@ -113,18 +111,19 @@ class MongoQuery[U] private(val ds: MongoDatastore,
     obj
   }
 
-  def runQuery: Iterator[DBObject] = {
+  def runQuery: Iterator[ScalaDSObject] = {
     // Make the filters
-    val grandFilter: DBObject = {
-      val newFilters = mkTypeFilter::filters.map(filterwalk)
+    val grandFilter: Option[DBObject] = {
+      val newFilters = filters.map(filterwalk)
       val len = newFilters.length
-      if (len == 1) newFilters.head
+      if (len == 0) None
+      else if (len == 1) Some(newFilters.head)
       else {  // Join all the sub filters with an and operation
         val obj = new BasicBSONList()
         newFilters.zipWithIndex.foreach { case (f, i) =>
           obj.put(i, f)
         }
-        new BasicDBObject("$and", obj)
+        Some(new BasicDBObject("$and", obj))
       }
     }
 
@@ -137,13 +136,20 @@ class MongoQuery[U] private(val ds: MongoDatastore,
     }
 
     // Run the query, add the limit, and add the sort directions
-    val it = sorts.foldRight(
-      grandProjection.fold(ds.collection.find(grandFilter))(ds.collection.find(grandFilter, _)).limit(maxResults)
-    )((s, it) => it.sort(s))
+    val coll = ds.db.getCollection(transformer.typeName)
+    val it = sorts.foldRight{
+      val query = (grandFilter, grandProjection) match {
+      case (None, None)               => coll.find()
+      case (Some(filter), None)       => coll.find(filter)
+      case (None, Some(proj))         => coll.find(new BasicDBObject(), proj)
+      case (Some(filter), Some(proj)) => coll.find(filter, proj)
+    }
+      query.limit(maxResults)
+    }((s, it) => it.sort(s))
 
-    new Iterator[DBObject] {
+    new Iterator[ScalaDSObject] {
       def hasNext: Boolean = it.hasNext
-      def next(): DBObject = it.next()
+      def next(): ScalaDSObject = new ScalaDSObject(transformer.typeName, it.next())
     }
   }
 

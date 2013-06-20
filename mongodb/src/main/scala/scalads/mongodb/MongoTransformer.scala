@@ -14,33 +14,30 @@ import scalads.macroimpls.{EntitySerializer, EntityBuilder}
  * @author Bryce Anderson
  *         Created on 6/18/13
  */
-trait MongoTransformer[U] extends Transformer[U, DBObject] {
+trait MongoTransformer[U] extends Transformer[U, ScalaDSObject] {
   /** Factory method for generating object readers
     *
     * @param entity datastore entity intended to be wrapped by the reader
     * @return appropriate object reader for the type of entity
     */
-  def newReader(entity: DBObject): ObjectReader = new BsonObjectReader(entity)
+  def newReader(entity: ScalaDSObject): ObjectReader = new BsonObjectReader(entity.json)
 
   /** Generates a writer which will store the data in the provided entity
     *
     * @param entity storage container for the writer to place data in
     * @return the writer that wraps the entity
     */
-  def newWriter(entity: DBObject): Writer[DBObject] = new MongoWriter(entity)
+  def newWriter(entity: ScalaDSObject): Writer[ScalaDSObject] = new MongoWriter(entity)
 
-   def freshEntity(): DBObject = {
-    import scalads.util.AnnotationHelpers.getName
-    new BasicDBObject(MongoDatastore.dbTypeField, getName(typeTag))
-  }
+   def freshEntity(): ScalaDSObject = new ScalaDSObject(typeName)
 
   def typeTag: TypeTag[U]
 
-  def typeName = scalads.util.AnnotationHelpers.getName(typeTag)
+  lazy val typeName: String = MongoDatastore.collectionName(typeTag)
 }
 
 object MongoTransformer {
-  implicit def getMongoTrans[U](implicit des: EntityBuilder[U, DBObject],
+  implicit def getMongoTrans[U](implicit des: EntityBuilder[U, ScalaDSObject],
                                 ser: EntitySerializer[U],
                                 tag: TypeTag[U]) =
     new MongoTransformer[U] {

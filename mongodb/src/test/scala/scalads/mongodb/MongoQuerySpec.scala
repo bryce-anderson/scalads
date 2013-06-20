@@ -12,7 +12,7 @@ import scalads.core.{EntityBacker, QueryIterator}
  */
 class MongoQuerySpec extends MongoSpecTemplate {
 
-  lazy val ds = MongoDatastore(coll)
+  lazy val ds = MongoDatastore(db)
 
   lazy val backend: String = "Mongo"
 
@@ -195,7 +195,8 @@ class MongoQuerySpec extends MongoSpecTemplate {
 
       ds.put(ClassRenamed(1))
 
-      ds.collection.find(new BasicDBObject(MongoDatastore.dbTypeField, "foo")).count() should equal(1)
+      ds.db.getCollection(MongoDatastore.collectionName[ClassRenamed])
+        .find().count() should equal(1)
   }
 
   it should "find renamed types" in {
@@ -209,8 +210,8 @@ class MongoQuerySpec extends MongoSpecTemplate {
 
     ds.put(FieldRenamed(1))
 
-    val a = ds.collection.find(new BasicDBObject(MongoDatastore.dbTypeField, getName(typeTag[FieldRenamed]))
-      .append("foo", 1)
+    val a = ds.db.getCollection(MongoDatastore.collectionName[FieldRenamed]).
+      find(new BasicDBObject("foo", new BasicDBObject("$exists", true))
     )
 
       a.count() should equal(1)
