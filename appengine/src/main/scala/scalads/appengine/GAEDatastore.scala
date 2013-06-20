@@ -43,7 +43,7 @@ class GAEDatastore(val collection: DatastoreService) extends Datastore[Key, Enti
 
   def delete(entity: Entity) {collection.delete(entity.getKey)}
 
-  override def put(entities: Iterable[Entity]) { collection.put(entities.asJava) }
+  override def putManyEntity(entities: Iterable[Entity]) { collection.put(entities.asJava) }
 
   def putEntity(entity: Entity): Key = collection.put(entity)
 

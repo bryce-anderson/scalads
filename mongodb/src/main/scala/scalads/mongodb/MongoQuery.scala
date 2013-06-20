@@ -98,10 +98,10 @@ class MongoQuery[U] private(val ds: MongoDatastore,
   // takes an initial object and merges the projection into the tree structure
   private def addProjection(obj: DBObject, proj: Projection): DBObject = {
     @tailrec def addFromList(obj: DBObject, path: List[String]): Unit = path match {
-      case key::Nil => obj.put(key, 1)
-      case h::t => obj.get(h) match {
-        case obj: DBObject => addFromList(obj, t)
-        case null =>
+      case key::Nil         => obj.put(key, 1)
+      case h::t             => obj.get(h) match {
+        case obj: DBObject    => addFromList(obj, t)
+        case null             =>
           val newObj = new BasicDBObject()
           obj.put(h, newObj)
           addFromList(newObj, t)

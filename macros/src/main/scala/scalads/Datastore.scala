@@ -44,7 +44,7 @@ trait Datastore[+WriteResult, Entity] { self =>
     *
     * @param entities The Iterable[Entity] to be persisted
     */
-  def put(entities: Iterable[Entity]): Unit = entities.foreach(putEntity)
+  def putManyEntity(entities: Iterable[Entity]): Unit = entities.foreach(putEntity)
 
   /** Stores the provided object in the datastore
     *
@@ -54,4 +54,16 @@ trait Datastore[+WriteResult, Entity] { self =>
     */
   def put[U](obj: U)(implicit transformer: TFactory[U]): WriteResult =
     putEntity(transformer.serializer.serialize(obj, transformer.newWriter(transformer.freshEntity())).result)
+
+  /** Stores the provided collection of objects in the datastore
+    *
+    * @param objs collection of objects intended for storage
+    * @tparam U static type of the object
+    * @return result of the datastores write operation
+    */
+  def putMany[U](objs: Iterable[U])(implicit transformer: TFactory[U]): Unit = {
+    putManyEntity(objs.map{ obj =>
+      transformer.serializer.serialize(obj, transformer.newWriter(transformer.freshEntity())).result
+    })
+  }
 }

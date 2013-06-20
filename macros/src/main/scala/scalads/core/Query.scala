@@ -56,9 +56,9 @@ trait Query[U, E] { self =>
 
   /** Update the results of the query with the supplied function
     *
-    * @param f function applied to the returned entities to either update or ignore the entry
+    * @param f function applied to the returned entities to either updateOption or ignore the entry
     */
-  def update(f: U => Option[U]) {
+  def updateOption(f: U => Option[U]) {
     val newEntities = new ListBuffer[E]
     getIterator().foreach { i =>
       f(i).foreach{ r =>
@@ -67,14 +67,14 @@ trait Query[U, E] { self =>
         newEntities += newEntity
       }
     }
-    ds.put(newEntities.result(): Iterable[E])
+    ds.putManyEntity(newEntities.result(): Iterable[E])
   }
 
   /** Update the results of the query with the supplied function
     *
-    * @param f function applied to the returned entities to either update or ignore the entry
+    * @param f function applied to the returned entities to either updateOption or ignore the entry
     */
-  def update(f: PartialFunction[U, U]): Unit = update(f.lift)
+  def update(f: PartialFunction[U, U]): Unit = updateOption(f.lift)
 
   def projectAndMap[T](projs: List[Projection], f: (DS, ObjectReader) => T): QueryIterator[T, E] = {
     val it = addProjections(projs).runQuery
