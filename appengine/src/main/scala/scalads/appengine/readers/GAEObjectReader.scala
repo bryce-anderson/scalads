@@ -18,9 +18,7 @@ object GAEObjectReader {
   def apply(entity: Entity) = new GAEObjectReader(entity, "")
 }
 
-class GAEObjectReader(val entity: PropertyContainer, prefix: String) extends ObjectReader { self =>
-
-  type Entity = PropertyContainer
+class GAEObjectReader(entity: PropertyContainer, prefix: String) extends ObjectReader { self =>
 
   lazy val getKeys: Set[String] = entity.getProperties.keySet().asScala.toSet
 
@@ -82,14 +80,6 @@ class GAEObjectReader(val entity: PropertyContainer, prefix: String) extends Obj
     case r: RawValue => try { Some(r.asStrictType(classOf[String])) } catch { case _: Throwable => None }
     case e => None
   })
-//
-//
-//  override def getString(key: String): String = {
-//    optString(key).getOrElse {
-//
-//      sys.error(s"String Not found: ${fullPrefix +key}. ${self.getKeys}\n${self.entity.getProperty("in5")}")
-//    }
-//  }
 
   def optDate(key: String): Option[Date] =  Option(entity.getProperty(fullPrefix + key)).flatMap (_ match {
     case i: Date => Some(i)

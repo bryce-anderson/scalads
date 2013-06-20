@@ -24,11 +24,6 @@ object BsonReader {
 
 class BsonObjectReader(obj:BSONObject) extends ObjectReader {
 
-
-  type Entity = BSONObject
-
-  def entity = obj
-
   def optDate(key: String): Option[Date] = obj.get(key) match {
     case date: Date => Some(date)
     case _ => None
@@ -105,10 +100,7 @@ class BsonObjectReader(obj:BSONObject) extends ObjectReader {
   }
 }
 
-class BsonIterator(val entity: BasicBSONList) extends ArrayIterator {
-
-
-  type Entity = BasicBSONList
+class BsonIterator(entity: BasicBSONList) extends ArrayIterator {
 
   def nextDate: Date = next match {
     case obj: Date => obj

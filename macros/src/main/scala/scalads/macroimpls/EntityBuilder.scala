@@ -23,7 +23,8 @@ object EntityBuilder {
     val deserializeExpr = macroimpls.EntityDeserializer.extendWithEntityBacker[U, E](c)(
       c.Expr[Datastore[_, E]](Ident(newTermName("ds"))),
       c.Expr[Transformer[U, E]](Ident(newTermName("trans"))),
-      c.Expr[ObjectReader](Ident(newTermName("reader")))
+      c.Expr[ObjectReader](Ident(newTermName("reader"))),
+      c.Expr[E](Ident(newTermName("entity")))
     )
 
     val result = reify ( new EntityBuilder[U, E] {
