@@ -5,7 +5,6 @@ package scalads.mongodb
  *         Created on 6/16/13
  */
 
-import scala.reflect.runtime.universe.typeTag
 class MongoDatastoreSpec extends MongoSpecTemplate {
 
   case class Test(in: Int, in2: String)
@@ -27,6 +26,6 @@ class MongoDatastoreSpec extends MongoSpecTemplate {
     val name = MongoDatastore.collectionName[Compound]
     val arr = db.getCollection(name).find().toArray
 
-    arr.size() should equal (2)
+    arr.size() should equal (1)
   }
 }

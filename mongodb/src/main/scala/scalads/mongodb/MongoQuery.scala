@@ -113,38 +113,28 @@ class MongoQuery[U] private(val ds: MongoDatastore,
 
   def runQuery: Iterator[ScalaDSObject] = {
     // Make the filters
-    val grandFilter: Option[DBObject] = {
+    val grandFilter: DBObject = {
       val newFilters = filters.map(filterwalk)
-      val len = newFilters.length
-      if (len == 0) None
-      else if (len == 1) Some(newFilters.head)
-      else {  // Join all the sub filters with an and operation
-        val obj = new BasicBSONList()
-        newFilters.zipWithIndex.foreach { case (f, i) =>
-          obj.put(i, f)
-        }
-        Some(new BasicDBObject("$and", obj))
+      newFilters match {
+        case Nil        => null
+        case f::Nil     => f
+        case _          =>  // Join all the sub filters with an and operation
+          val obj = new BasicBSONList()
+          newFilters.zipWithIndex.foreach { case (f, i) => obj.put(i, f) }
+          new BasicDBObject("$and", obj)
       }
     }
 
-    val grandProjection: Option[DBObject] = projections match {
-      case Nil => None
-      case lst =>
+    val grandProjection: DBObject = if (!projections.isEmpty) {
         val rootObj = new BasicDBObject()
-        lst.foreach(addProjection(rootObj, _))
-        Some(rootObj)
-    }
+        projections.foreach(addProjection(rootObj, _))
+        rootObj
+    } else null
 
     // Run the query, add the limit, and add the sort directions
     val coll = ds.db.getCollection(transformer.typeName)
     val it = sorts.foldRight{
-      val query = (grandFilter, grandProjection) match {
-      case (None, None)               => coll.find()
-      case (Some(filter), None)       => coll.find(filter)
-      case (None, Some(proj))         => coll.find(new BasicDBObject(), proj)
-      case (Some(filter), Some(proj)) => coll.find(filter, proj)
-    }
-      query.limit(maxResults)
+      coll.find(grandFilter, grandProjection).limit(maxResults)
     }((s, it) => it.sort(s))
 
     new Iterator[ScalaDSObject] {
