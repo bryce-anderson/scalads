@@ -1,17 +1,18 @@
 package scalads.mongodb
 
 import scalads.core._
-import com.mongodb.{BasicDBList, BasicDBObject, DBObject}
-import scalads.core.Projection
-import scala.reflect.runtime.universe.TypeTag
+
+import reactivemongo.bson._
+
 import scalads.core.SortDirection.{ASC, DSC}
-import scala.annotation.tailrec
-import org.bson.types.BasicBSONList
+
 import scalads.util.AnnotationHelpers._
-import scala.Some
 import scalads.core.Projection
 import scalads.core.CompositeFilter
 import scalads.core.SingleFilter
+import reactivemongo.api.collections.default.BSONCollection
+import play.api.libs.iteratee.Enumerator
+import scala.concurrent.ExecutionContext
 
 /**
  * @author Bryce Anderson
@@ -23,17 +24,18 @@ class MongoQuery[U] private(val ds: MongoDatastore,
                             val transformer: MongoTransformer[U],
                             maxResults: Int,
                             filters: List[Filter],
-                            sorts: List[DBObject],
-                            projections: List[Projection]) extends Query[U, ScalaDSObject] { self =>
+                            sorts: List[BSONDocument],
+                            projections: List[Projection])
+                           (implicit ec: ExecutionContext) extends Query[U, ScalaDSObject] { self =>
 
   type Repr = MongoQuery[U]
 
   // Generates a fresh query
-  def this(ds: MongoDatastore, tpe: MongoTransformer[U]) = this(ds, tpe, 0, Nil, Nil, Nil)
+  def this(ds: MongoDatastore, tpe: MongoTransformer[U])(implicit ec: ExecutionContext) = this(ds, tpe, 0, Nil, Nil, Nil)(ec)
 
-  private def makePath(lst: List[String], lastOp: (String) => DBObject): DBObject = lst match {
+  private def makePath(lst: List[String], lastOp: (String) => BSONDocument): BSONDocument = lst match {
     case last::Nil => lastOp(last)
-    case h::t => new BasicDBObject(h, makePath(t, lastOp))
+    case h::t => BSONDocument(h -> makePath(t, lastOp))
   }
 
   /** Generated a new query that will filter the results based on the filter
@@ -55,7 +57,7 @@ class MongoQuery[U] private(val ds: MongoDatastore,
       case ASC =>  1
       case DSC => -1
     }
-    val obj = makePath(field.path, str => new BasicDBObject(str, order))
+    val obj = makePath(field.path, str => BSONDocument(str -> order))
     new MongoQuery[U](ds, transformer, maxResults, filters, obj::sorts, projections)
   }
 
@@ -69,7 +71,7 @@ class MongoQuery[U] private(val ds: MongoDatastore,
 
 
   // generates the DBObject for a filter
-  private def filterwalk(f: Filter): DBObject = f match {
+  private def filterwalk(f: Filter): BSONDocument = f match {
     case f: SingleFilter =>
       val op = f.op match {
         case Operation.EQ => "$eq"
@@ -80,67 +82,53 @@ class MongoQuery[U] private(val ds: MongoDatastore,
         case Operation.NE => "$ne"
       }
 
-      makePath(f.axis.path, key => new BasicDBObject(key, new BasicDBObject(op, f.value)))
+      makePath(f.axis.path, key => BSONDocument(key ->  BSONDocument(op -> MongoDatastore.mongoHandle(f.value))))
 
     case CompositeFilter(f1, f2, JoinOperation.AND) =>
-      val lst = new BasicDBList
-      lst.put(0, filterwalk(f1))
-      lst.put(1, filterwalk(f2))
-      new BasicDBObject("$and", lst)
+      val lst = BSONArray( filterwalk(f1), filterwalk(f2) )
+      BSONDocument("$and" -> lst)
 
     case CompositeFilter(f1, f2, JoinOperation.OR) =>
-      val lst = new BasicDBList
-      lst.add(filterwalk(f1))
-      lst.add(filterwalk(f2))
-      new BasicDBObject("$or", lst)
+      val lst = BSONArray( filterwalk(f1), filterwalk(f2) )
+      BSONDocument("$or" -> lst)
   }
 
   // takes an initial object and merges the projection into the tree structure
-  private def addProjection(obj: DBObject, proj: Projection): DBObject = {
-    @tailrec def addFromList(obj: DBObject, path: List[String]): Unit = path match {
-      case key::Nil         => obj.put(key, 1)
+  private def addProjection(obj: BSONDocument, proj: Projection): BSONDocument = {
+    def addFromList(obj: BSONDocument, path: List[String]): BSONDocument = path match {
+      case key::Nil         => obj.add(key -> 1)
       case h::t             => obj.get(h) match {
-        case obj: DBObject    => addFromList(obj, t)
-        case null             =>
-          val newObj = new BasicDBObject()
-          obj.put(h, newObj)
-          addFromList(newObj, t)
+        case Some(obj: BSONDocument)    => addFromList(obj, t)
+        case None             =>
+          obj.add(h -> addFromList(BSONDocument(), t))
       }
     }
     addFromList(obj, proj.path)
-    obj
   }
 
-  def runQuery: Iterator[ScalaDSObject] = {
+  def runQuery: Enumerator[ScalaDSObject] = {
     // Make the filters
-    val grandFilter: DBObject = {
+    val grandFilter: BSONDocument = {
       val newFilters = filters.map(filterwalk)
       newFilters match {
         case Nil        => null
         case f::Nil     => f
         case _          =>  // Join all the sub filters with an and operation
-          val obj = new BasicBSONList()
-          newFilters.zipWithIndex.foreach { case (f, i) => obj.put(i, f) }
-          new BasicDBObject("$and", obj)
+          BSONDocument("$and"-> BSONArray(newFilters))
       }
     }
 
-    val grandProjection: DBObject = if (!projections.isEmpty) {
-        val rootObj = new BasicDBObject()
-        projections.foreach(addProjection(rootObj, _))
-        rootObj
-    } else null
+    val grandProjection: Option[BSONDocument] = if (!projections.isEmpty) {
+      Some(projections.foldLeft(BSONDocument())(addProjection))
+    } else None
 
     // Run the query, add the limit, and add the sort directions
-    val coll = ds.db.getCollection(transformer.typeName)
+    val coll = ds.db[BSONCollection](transformer.typeName)
     val it = sorts.foldRight{
-      coll.find(grandFilter, grandProjection).limit(maxResults)
+      grandProjection.foldLeft(coll.find(grandFilter)){(q, p) => q.projection(p)}
     }((s, it) => it.sort(s))
 
-    new Iterator[ScalaDSObject] {
-      def hasNext: Boolean = it.hasNext
-      def next(): ScalaDSObject = new ScalaDSObject(transformer.typeName, it.next())
-    }
+    it.cursor.enumerate().map{ doc => new ScalaDSObject(transformer.typeName, doc)}
   }
 
   def limit(size: Int): MongoQuery[U] =

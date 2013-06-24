@@ -3,10 +3,12 @@ package scalads.mongodb
 import org.scalatest.matchers.ShouldMatchers
 import org.scalatest.{BeforeAndAfterAll, FlatSpec}
 
-import com.mongodb.{ServerAddress, MongoClient}
-
 import de.bwaldvogel.mongo.backend.memory.MemoryBackend
 import de.bwaldvogel.mongo.MongoServer
+
+import reactivemongo.api._
+
+import concurrent.ExecutionContext.Implicits.global
 
 
 /**
@@ -17,11 +19,12 @@ trait MongoSpecTemplate extends FlatSpec with BeforeAndAfterAll with ShouldMatch
 
   private lazy val server: MongoServer = new MongoServer(new MemoryBackend())
   private lazy val serverAddress = server.bind()
-  private lazy val client = new MongoClient(new ServerAddress(serverAddress))
-  def db = client.getDB("testdb")
+  private lazy val driver = new MongoDriver
+  private lazy val connection: MongoConnection = driver.connection(List("localubuntu:27017"))//driver.connection(List(serverAddress.getHostName + ":" + serverAddress.getPort))
+  def db:DB = connection("testdb")
 
   override protected def afterAll() {
-    client.close()
+    connection.close()
     server.shutdownNow()
     super.afterAll()
   }

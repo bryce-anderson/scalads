@@ -8,6 +8,8 @@ import scalads.Datastore
 import scalads.readers.ObjectReader
 import scala.collection.mutable.ListBuffer
 
+import play.api.libs.iteratee.{Enumerator, Iteratee}
+
 /**
  * @author Bryce Anderson
  *         Created on 5/30/13
@@ -18,6 +20,8 @@ trait Query[U, E] { self =>
   type Repr <: Query[U, E]
 
   type DS = Datastore[_, E]
+
+  type Result[T]
 
   def ds: DS
 
@@ -45,7 +49,7 @@ trait Query[U, E] { self =>
     */
   protected def addProjections(projs: List[Projection]): Repr
 
-  def runQuery: Iterator[E]
+  def runQuery: Enumerator[E]
 
   /** Sets the limit on how many results to return
     *
@@ -60,7 +64,7 @@ trait Query[U, E] { self =>
     */
   def updateOption(f: U => Option[U]) {
     val newEntities = new ListBuffer[E]
-    getIterator().foreach { i =>
+    enumerate |>> Iteratee.foreach { i =>
       f(i).foreach{ r =>
         val newEntity = ds.replacementEntity(i.ds_entity)
         i.ds_serialize(r, transformer.newWriter(newEntity))
@@ -76,20 +80,17 @@ trait Query[U, E] { self =>
     */
   def update(f: PartialFunction[U, U]): Unit = updateOption(f.lift)
 
-  def projectAndMap[T](projs: List[Projection], f: (DS, ObjectReader) => T): QueryIterator[T, E] = {
-    val it = addProjections(projs).runQuery
-    new QueryIterator[T, E] {
-      def hasNext: Boolean = it.hasNext
-      def nextEntity(): E = it.next()
-      def next() = f(ds, transformer.newReader(nextEntity()))
-    }
+  def projectAndMap[T](projs: List[Projection], f: (DS, ObjectReader) => T): Enumerator[T] = {
+    addProjections(projs).runQuery.map { entity =>  f(ds, transformer.newReader(entity)) }
   }
 
-  def getIterator(): QueryIterator[U with EntityBacker[U, E], E] = QueryIterator[U, E](ds, runQuery, transformer)
+  def enumerate(): Enumerator[U with EntityBacker[U, E]] = {
+    runQuery.map{ entity =>  transformer.deserialize(ds, entity) }
+  }
+//
+//  def mapIterator[T](f: (DS, ObjectReader) => T): Enumerator[T] = projectAndMap(Nil, f)
 
-  def mapIterator[T](f: (DS, ObjectReader) => T): QueryIterator[T, E] = projectAndMap(Nil, f)
-
-  def project[R](f: U => R): QueryIterator[R, E] =     macro QueryMacros.project[U, R, E]
+  def project[R](f: U => R): Enumerator[R] =           macro QueryMacros.project[U, R, E]
 
   def sortAsc(f: U => Any): Repr =                     macro QueryMacros.sortImplAsc[U, Repr]
 

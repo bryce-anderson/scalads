@@ -5,6 +5,7 @@ import scalads.writers.Writer
 import scalads.macroimpls.{EntityBuilder, EntitySerializer}
 
 import scala.reflect.runtime.universe.TypeTag
+import scalads.Datastore
 
 /**
  * @author Bryce Anderson
@@ -16,7 +17,7 @@ import scala.reflect.runtime.universe.TypeTag
   * @tparam U type to operate on
   * @tparam Entity type of entity for the datastore
   */
-trait Transformer[U, Entity] {
+trait Transformer[U, Entity] { self =>
 
   /** Factory method for generating object readers
     *
@@ -37,5 +38,7 @@ trait Transformer[U, Entity] {
   def serializer: EntitySerializer[U]
 
   def deserializer: EntityBuilder[U, Entity]
+
+  def deserialize(ds: Datastore[_, Entity], entity: Entity) = deserializer.deserialize(ds, self, entity)
 
 }

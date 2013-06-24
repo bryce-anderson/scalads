@@ -1,7 +1,6 @@
 package scalads.mongodb
 
-import com.mongodb.{BasicDBObject, DBObject}
-import org.bson.types.ObjectId
+import reactivemongo.bson._
 
 /**
  * @author Bryce Anderson
@@ -9,14 +8,14 @@ import org.bson.types.ObjectId
  */
 
 
-class ScalaDSObject(val collection: String, val json: DBObject) { self =>
+class ScalaDSObject(val collection: String, val json: BSONDocument) { self =>
 
-  def this(collection: String) = this(collection, new BasicDBObject())
+  def this(collection: String) = this(collection, BSONDocument())
 
   def getReplacement(): ScalaDSObject = {
     json.get(MongoDatastore.id) match {
-      case null => sys.error("Cannot replace entity: doesn't have key.")
-      case id: ObjectId => new ScalaDSObject(collection, new BasicDBObject(MongoDatastore.id, id))
+      case None => sys.error("Cannot replace entity: doesn't have key.")
+      case Some(value: BSONObjectID) => new ScalaDSObject(collection, BSONDocument(MongoDatastore.id -> value))
     }
   }
 }

@@ -11,7 +11,9 @@ object Settings {
     scalaVersion := "2.10.2-RC1",
     scalacOptions ++= Seq(),
     libraryDependencies <+= scalaVersion("org.scala-lang" % "scala-reflect" % _),
-    libraryDependencies += ScalaTest % "test"
+    libraryDependencies += "play" %% "play-iteratees" % "2.1.0",
+    libraryDependencies += ScalaTest % "test",
+    resolvers += "Typesafe Releases" at "http://repo.typesafe.com/typesafe/releases/"
   )
 }
 
@@ -22,6 +24,7 @@ object build extends Build {
     base = file("macros"),
     settings = Settings.buildSettings ++ Seq(parallelExecution in Test := false) ++ Seq(
       libraryDependencies += GoogleAppEngine
+      
     )
   )
   

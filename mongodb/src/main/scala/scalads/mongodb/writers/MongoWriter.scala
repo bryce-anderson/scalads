@@ -1,11 +1,12 @@
 package scalads.mongodb.writers
 
-import com.mongodb.{BasicDBObject, DBObject}
+
 import scalads.writers.Writer
 import java.util.Date
-import javax.swing.plaf.basic.BasicButtonListener
-import org.bson.types.BasicBSONList
-import scalads.mongodb.ScalaDSObject
+
+import scalads.mongodb.{MongoDatastore, ScalaDSObject}
+import reactivemongo.bson._
+import scala.collection.mutable.ListBuffer
 
 /**
  * @author Bryce Anderson
@@ -14,9 +15,11 @@ import scalads.mongodb.ScalaDSObject
 
 class MongoWriter(entity: ScalaDSObject) extends Writer[ScalaDSObject] {
 
-  private var writer: DSWriter = new RootWriter(entity.json)
+  val root = new RootWriter(entity.json)
 
-  def result = entity
+  private var writer: DSWriter = root
+
+  def result = new ScalaDSObject(entity.collection, root.rootEntity)
 
   def startArray() { writer = writer.startArray() }
 
@@ -54,10 +57,9 @@ class MongoWriter(entity: ScalaDSObject) extends Writer[ScalaDSObject] {
 }
 
 trait DSWriter { self =>
-  protected def parent: DSWriter
-  protected def container: DBObject
 
   def startObject(): ObjectWriter
+
   def startArray(): ArrayWriter
 
   private[writers] def handleVal(value: Any): DSWriter
@@ -71,9 +73,7 @@ trait DSWriter { self =>
   def startField(name: String): DSWriter = error("startField")
 }
 
-class RootWriter(val rootEntity: DBObject) extends DSWriter { self =>
-
-  protected def container: DBObject = rootEntity
+class RootWriter(var rootEntity: BSONDocument) extends DSWriter { self =>
 
   def startArray(): ArrayWriter = error("startArray")
 
@@ -81,23 +81,20 @@ class RootWriter(val rootEntity: DBObject) extends DSWriter { self =>
 
   def endArray(): DSWriter = error("endArray")
 
-  def parent: DSWriter = sys.error("RootWriter doesn't have a parent")
-
   private var finished = false
-  protected def entity = rootEntity
 
   override def startObject(): ObjectWriter = {
     if (finished) sys.error("RootWriter already started. Cannot start a new object!")
-    else new ObjectWriter(entity, this)
+    else new ObjectWriter({doc => rootEntity = doc; self}, Nil)
   }
 
   override def endObject() = { finished = true; self }
 }
 
 // On ending this object, the parent is returned.
-private[writers] class ObjectWriter(val container: DBObject, val parent: DSWriter) extends DSWriter { self =>
+private[writers] class ObjectWriter(finish: BSONDocument => DSWriter, fields: List[(String, BSONValue)]) extends DSWriter { self =>
 
-  def endObject(): DSWriter = parent
+  def endObject(): DSWriter = finish(BSONDocument(fields))
 
   def endArray(): DSWriter = error("endArray")
 
@@ -107,61 +104,49 @@ private[writers] class ObjectWriter(val container: DBObject, val parent: DSWrite
 
   def startArray() = error("startArray")
 
-  override def startField(name: String) = new FieldWriter(self, name)
+  override def startField(name: String) = new FieldWriter(name, v => new ObjectWriter(finish, (name, v)::fields))
 }
 
-private[writers] class FieldWriter(val parent: ObjectWriter, name: String) extends DSWriter with MongoHandleWrapper { self =>
+private[writers] class FieldWriter(name: String, finish: BSONValue => DSWriter) extends DSWriter with MongoHandleWrapper { self =>
 
   def endObject(): DSWriter = error("endObject")
 
   def endArray(): DSWriter = error("endArray")
 
-  def container = parent.container
-
   override def startObject(): ObjectWriter = {
-    val obj = new BasicDBObject()
-    container.put(name, obj)
-    new ObjectWriter(obj, parent)
+    new ObjectWriter(finish, Nil)
   }
 
-  override def startArray(): ArrayWriter = new ArrayWriter(self)
+  override def startArray(): ArrayWriter = new ArrayWriter(finish, new ListBuffer[BSONValue])
 
-  override def handleVal(value: Any): DSWriter = {
-    container.put(name, mongoHandle(value))
-    parent
-  }
+  override def handleVal(value: Any): DSWriter =  finish(mongoHandle(value))
 }
 
 // on ending the array, the array is added using parent.handleVal and the reader returned should be the underlying reader
-private[writers] class ArrayWriter(val parent: DSWriter) extends DSWriter with MongoHandleWrapper { self =>
-
-  private val arr = new BasicBSONList()
+private[writers] class ArrayWriter(finish: BSONArray => DSWriter, array: ListBuffer[BSONValue]) extends DSWriter with MongoHandleWrapper { self =>
 
   def endObject(): DSWriter = error("endObject")
 
-  def endArray(): DSWriter = parent.handleVal(arr)
-
-  protected def container: DBObject = error("container")
+  def endArray(): DSWriter = finish(BSONArray(array.result))
 
   def startObject(): ObjectWriter = {
-    val container = new BasicDBObject()
-    handleVal(container)
-    new ObjectWriter(container, self)
+    new ObjectWriter({obj =>
+      array += obj
+      self}, Nil)
   }
 
-  def startArray(): ArrayWriter = new ArrayWriter(self)
+  def startArray(): ArrayWriter = new ArrayWriter({ arr =>
+    array += arr
+    self
+  }, new ListBuffer[BSONValue])
 
   override def handleVal(value: Any): DSWriter = {
-    arr.add(mongoHandle(value))
+    array += mongoHandle(value)
     self
   }
 }
 
 // Trait that holds a function that will filter types as necessary
 trait MongoHandleWrapper {
-  def mongoHandle(in: Any): AnyRef = in match {
-    case b: BigInt => b.toString()
-    case b: BigDecimal => b.toString()
-    case i: AnyRef => i
-  }
+  def mongoHandle(in: Any): BSONValue = MongoDatastore.mongoHandle(in)
 }

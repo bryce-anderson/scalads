@@ -1,7 +1,7 @@
 package scalads.mongodb
 
 import scalads.core.Transformer
-import com.mongodb.{BasicDBObject, DBObject}
+
 import scalads.writers.Writer
 import scalads.readers.ObjectReader
 

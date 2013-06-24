@@ -1,5 +1,14 @@
 package scalads.mongodb
 
+import reactivemongo.api.collections.default.BSONCollection
+
+import concurrent.ExecutionContext.Implicits.global
+import reactivemongo.bson.BSONDocument
+
+import scala.concurrent.duration._
+import scala.concurrent.Await
+import reactivemongo.core.commands.Count
+
 /**
  * @author Bryce Anderson
  *         Created on 6/16/13
@@ -12,11 +21,19 @@ class MongoDatastoreSpec extends MongoSpecTemplate {
 
   "MongoDatastore" should "store a simple object" in {
     val ds = new MongoDatastore(db)
-    ds.put(Test(1, "two"))
+    println("Error: -----------------------------" + Await.result( ds.put(Test(1, "two")), 2.seconds))
 
     val name = MongoDatastore.collectionName[Test]
 
-    db.getCollection(name).find().toArray.size() should equal (1)
+    Await.result(
+      db[BSONCollection](name)
+        .find(BSONDocument())
+        .cursor[BSONDocument]
+        .toList()
+        .map(_.length),
+      Duration.Inf) should equal (13)
+
+    Await.result(db.command(Count(name, None)), Duration.Inf) should equal(10)
   }
 
   it should "store a Compound object" in {
@@ -24,8 +41,8 @@ class MongoDatastoreSpec extends MongoSpecTemplate {
     ds.put(Compound(1, Test(1, "two")))
 
     val name = MongoDatastore.collectionName[Compound]
-    val arr = db.getCollection(name).find().toArray
+    val arr = db[BSONCollection](name).find(BSONDocument()).cursor.iterator
 
-    arr.size() should equal (1)
+    arr.length should equal (1)
   }
 }
