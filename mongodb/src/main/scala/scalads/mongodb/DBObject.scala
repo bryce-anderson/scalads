@@ -16,6 +16,7 @@ class ScalaDSObject(val collection: String, val json: BSONDocument) { self =>
     json.get(MongoDatastore.id) match {
       case None => sys.error("Cannot replace entity: doesn't have key.")
       case Some(value: BSONObjectID) => new ScalaDSObject(collection, BSONDocument(MongoDatastore.id -> value))
+      case e => sys.error(s"BSONDocument contains wrong type in id field: $e")
     }
   }
 }

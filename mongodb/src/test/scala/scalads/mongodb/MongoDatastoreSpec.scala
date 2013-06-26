@@ -7,7 +7,6 @@ import reactivemongo.bson.BSONDocument
 
 import scala.concurrent.duration._
 import scala.concurrent.Await
-import reactivemongo.core.commands.Count
 
 /**
  * @author Bryce Anderson
@@ -19,9 +18,11 @@ class MongoDatastoreSpec extends MongoSpecTemplate {
   case class Test(in: Int, in2: String)
   case class Compound(in: Int, in2: Test)
 
+
   "MongoDatastore" should "store a simple object" in {
     val ds = new MongoDatastore(db)
-    println("Error: -----------------------------" + Await.result( ds.put(Test(1, "two")), 2.seconds))
+
+//    (0 until 10) foreach { i => ds.put(Test(i, i.toString))}
 
     val name = MongoDatastore.collectionName[Test]
 
@@ -31,17 +32,15 @@ class MongoDatastoreSpec extends MongoSpecTemplate {
         .cursor[BSONDocument]
         .toList()
         .map(_.length),
-      Duration.Inf) should equal (13)
-
-    Await.result(db.command(Count(name, None)), Duration.Inf) should equal(10)
+      Duration.Inf) should equal (10)
   }
 
   it should "store a Compound object" in {
     val ds = new MongoDatastore(db)
-    ds.put(Compound(1, Test(1, "two")))
+//    ds.put(Compound(1, Test(1, "two")))
 
     val name = MongoDatastore.collectionName[Compound]
-    val arr = db[BSONCollection](name).find(BSONDocument()).cursor.iterator
+    val arr = Await.result(db[BSONCollection](name).find(BSONDocument()).cursor.toList(), Duration.Inf)
 
     arr.length should equal (1)
   }

@@ -6,20 +6,14 @@ import reactivemongo.bson._
 
 import scalads.core.SortDirection.{ASC, DSC}
 
-import scalads.util.AnnotationHelpers._
-import scalads.core.Projection
-import scalads.core.CompositeFilter
-import scalads.core.SingleFilter
-import reactivemongo.api.collections.default.BSONCollection
 import play.api.libs.iteratee._
-import scala.concurrent.{Promise, Await, Future, ExecutionContext}
+import scala.concurrent.{Await, ExecutionContext}
 import scala.Some
 import scalads.core.Projection
 import scalads.core.CompositeFilter
 import reactivemongo.api.collections.default.BSONCollection
 import scalads.core.SingleFilter
 import reactivemongo.api.Cursor
-import scala.util.Success
 import scala.concurrent.duration.Duration
 
 /**
@@ -107,7 +101,7 @@ class MongoQuery[U] private(val ds: MongoDatastore,
     BSONDocument(projs.map{ p => (p.path.head, BSONInteger(1))})
   }
 
-  private def getCursor: Cursor[BSONDocument] = {
+  private def getQueryBuilder = {
     // Make the filters
     val grandFilter: BSONDocument = {
       val newFilters = filters.map(filterwalk)
@@ -129,11 +123,19 @@ class MongoQuery[U] private(val ds: MongoDatastore,
       grandProjection.fold(coll.find(grandFilter))(coll.find(grandFilter, _))
     }((s, it) => it.sort(s))
 
-    it.cursor
+    it
   }
 
+  def getCursor: Cursor[U with EntityBacker[U, ScalaDSObject]] = {
+    getQueryBuilder.cursor[U with EntityBacker[U, ScalaDSObject]](new BSONDocumentReader[U with EntityBacker[U, ScalaDSObject]] {
+      def read(bson: BSONDocument): U with EntityBacker[U, ScalaDSObject] = transformer.deserialize(ds, transformer.wrapDocument(bson))
+    }, ec)
+  }
+
+  def enumerate: Enumerator[U with EntityBacker[U, ScalaDSObject]] = getCursor.enumerate(maxResults)
+
   def runQuery: Iterator[ScalaDSObject] = {
-    var cursor = getCursor
+    var cursor = getQueryBuilder.cursor
 
     def refreshCursor(): Cursor[BSONDocument] = {
       while(!cursor.iterator.hasNext && cursor.hasNext)

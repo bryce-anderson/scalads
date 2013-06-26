@@ -29,9 +29,7 @@ class BsonObjectReader(obj:BSONDocument) extends ObjectReader {
     case _ => None
   })
 
-  lazy val getKeys: Set[String] = {
-    ???
-  }
+  lazy val getKeys: Set[String] =  obj.elements.map(_._1).toSet
 
   // Option forms
   def optObjectReader(key: String): Option[ObjectReader] = obj.get(key).flatMap(_ match {

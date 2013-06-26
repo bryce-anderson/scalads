@@ -9,6 +9,7 @@ import scala.reflect.runtime.universe.TypeTag
 import scalads.mongodb.readers.BsonObjectReader
 import scalads.mongodb.writers.MongoWriter
 import scalads.macroimpls.{EntitySerializer, EntityBuilder}
+import reactivemongo.bson.BSONDocument
 
 /**
  * @author Bryce Anderson
@@ -32,6 +33,8 @@ trait MongoTransformer[U] extends Transformer[U, ScalaDSObject] {
    def freshEntity(): ScalaDSObject = new ScalaDSObject(typeName)
 
   def typeTag: TypeTag[U]
+
+  def wrapDocument(entity: BSONDocument) = new ScalaDSObject(typeName, entity)
 
   lazy val typeName: String = MongoDatastore.collectionName(typeTag)
 }
