@@ -8,12 +8,11 @@ import scalads.readers.ObjectReader
 import scalads.core.Filter
 import scala.collection.mutable.ListBuffer
 import scalads.macroimpls.macrohelpers.{MacroHelpers, QueryMacroHelpers}
-import play.api.libs.iteratee.Enumerator
 
 
 object QueryMacros {
 
-  def project[U: c.WeakTypeTag, R, E](c: Context { type PrefixType = Query[U, E]})(f: c.Expr[U => R]): c.Expr[Enumerator[R]] = {
+  def project[U: c.WeakTypeTag, R, E](c: Context { type PrefixType = Query[U, E]})(f: c.Expr[U => R]): c.Expr[QueryIterator[R, E]] = {
     val helpers = new macrohelpers.MacroHelpers[c.type](c)
     import helpers.mkList
 

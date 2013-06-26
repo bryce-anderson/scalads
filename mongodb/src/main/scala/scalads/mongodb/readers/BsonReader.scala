@@ -19,10 +19,10 @@ import scala.util.Success
 
 class BsonObjectReader(obj:BSONDocument) extends ObjectReader {
 
-  def optDate(key: String): Option[Date] = obj.get(key) match {
+  def optDate(key: String): Option[Date] = obj.get(key).flatMap(_ match {
     case t: BSONDateTime => Some(new Date(t.value))
     case _ => None
-  }
+  })
 
   def optBytes(key: String): Option[Array[Byte]] = obj.get(key).flatMap(_ match {
     case bytes: BSONBinary => Some(bytes.value.readArray(bytes.value.size))
@@ -48,6 +48,7 @@ class BsonObjectReader(obj:BSONDocument) extends ObjectReader {
 
   def optLong(key: String): Option[Long] = obj.get(key).flatMap(_ match {
     case BSONInteger(i) => Some(i)
+    case BSONLong(l) => Some(l)
     case _ => None
   })
 

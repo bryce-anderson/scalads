@@ -11,8 +11,16 @@ import scalads.core.Projection
 import scalads.core.CompositeFilter
 import scalads.core.SingleFilter
 import reactivemongo.api.collections.default.BSONCollection
-import play.api.libs.iteratee.Enumerator
-import scala.concurrent.ExecutionContext
+import play.api.libs.iteratee._
+import scala.concurrent.{Promise, Await, Future, ExecutionContext}
+import scala.Some
+import scalads.core.Projection
+import scalads.core.CompositeFilter
+import reactivemongo.api.collections.default.BSONCollection
+import scalads.core.SingleFilter
+import reactivemongo.api.Cursor
+import scala.util.Success
+import scala.concurrent.duration.Duration
 
 /**
  * @author Bryce Anderson
@@ -29,6 +37,8 @@ class MongoQuery[U] private(val ds: MongoDatastore,
                            (implicit ec: ExecutionContext) extends Query[U, ScalaDSObject] { self =>
 
   type Repr = MongoQuery[U]
+
+  private val waitTime = Duration.Inf
 
   // Generates a fresh query
   def this(ds: MongoDatastore, tpe: MongoTransformer[U])(implicit ec: ExecutionContext) = this(ds, tpe, 0, Nil, Nil, Nil)(ec)
@@ -93,25 +103,16 @@ class MongoQuery[U] private(val ds: MongoDatastore,
       BSONDocument("$or" -> lst)
   }
 
-  // takes an initial object and merges the projection into the tree structure
-  private def addProjection(obj: BSONDocument, proj: Projection): BSONDocument = {
-    def addFromList(obj: BSONDocument, path: List[String]): BSONDocument = path match {
-      case key::Nil         => obj.add(key -> 1)
-      case h::t             => obj.get(h) match {
-        case Some(obj: BSONDocument)    => addFromList(obj, t)
-        case None             =>
-          obj.add(h -> addFromList(BSONDocument(), t))
-      }
-    }
-    addFromList(obj, proj.path)
+  private def buildProjection(projs: List[Projection]): BSONDocument = {
+    BSONDocument(projs.map{ p => (p.path.head, BSONInteger(1))})
   }
 
-  def runQuery: Enumerator[ScalaDSObject] = {
+  private def getCursor: Cursor[BSONDocument] = {
     // Make the filters
     val grandFilter: BSONDocument = {
       val newFilters = filters.map(filterwalk)
       newFilters match {
-        case Nil        => null
+        case Nil        => BSONDocument()
         case f::Nil     => f
         case _          =>  // Join all the sub filters with an and operation
           BSONDocument("$and"-> BSONArray(newFilters))
@@ -119,16 +120,46 @@ class MongoQuery[U] private(val ds: MongoDatastore,
     }
 
     val grandProjection: Option[BSONDocument] = if (!projections.isEmpty) {
-      Some(projections.foldLeft(BSONDocument())(addProjection))
+      Some(buildProjection(projections))
     } else None
 
     // Run the query, add the limit, and add the sort directions
     val coll = ds.db[BSONCollection](transformer.typeName)
     val it = sorts.foldRight{
-      grandProjection.foldLeft(coll.find(grandFilter)){(q, p) => q.projection(p)}
+      grandProjection.fold(coll.find(grandFilter))(coll.find(grandFilter, _))
     }((s, it) => it.sort(s))
 
-    it.cursor.enumerate().map{ doc => new ScalaDSObject(transformer.typeName, doc)}
+    it.cursor
+  }
+
+  def runQuery: Iterator[ScalaDSObject] = {
+    var cursor = getCursor
+
+    def refreshCursor(): Cursor[BSONDocument] = {
+      while(!cursor.iterator.hasNext && cursor.hasNext)
+        cursor = Await.result(cursor.next, waitTime)
+      cursor
+    }
+
+    var resultCount = 0
+
+    new Iterator[ScalaDSObject] {
+      def hasNext: Boolean = {
+        if (maxResults > 0 && resultCount == maxResults) return false
+        if (cursor.iterator.hasNext) return true
+        refreshCursor()
+        cursor.iterator.hasNext
+      }
+
+      def next(): ScalaDSObject = {
+        resultCount += 1
+        if (maxResults > 0 && resultCount > maxResults) sys.error(s"Iterator is past the requested results: MaxResults: $maxResults")
+
+        if (cursor.iterator.hasNext) return new ScalaDSObject(transformer.typeName, cursor.iterator.next())
+        refreshCursor()
+        new ScalaDSObject(transformer.typeName, cursor.iterator.next())
+      }
+    }
   }
 
   def limit(size: Int): MongoQuery[U] =

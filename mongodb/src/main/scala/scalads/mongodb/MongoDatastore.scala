@@ -17,6 +17,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import reactivemongo.bson._
 import scala.Some
 import reactivemongo.api.collections.default.BSONCollection
+import java.util.Date
 
 
 class MongoDatastore(protected[mongodb] val db: DB)(implicit ec: ExecutionContext)
@@ -79,8 +80,12 @@ object MongoDatastore {
     case b: BigInt => BSONInteger(b.intValue())
     case b: BigDecimal => BSONDouble(b.doubleValue())
     case i: Int => BSONInteger(i)
+    case i: Long => BSONLong(i)
     case f: Float => BSONDouble(f)
+    case d: Double => BSONDouble(d)
     case s: String => BSONString(s)
+    case d: Date => BSONDateTime(d.getTime)
 
+    case e => sys.error(s"Match error! Found type ${e.getClass}")
   }
 }
