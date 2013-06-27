@@ -18,6 +18,7 @@ import reactivemongo.bson._
 import scala.Some
 import reactivemongo.api.collections.default.BSONCollection
 import java.util.Date
+import scalads.exceptions.MappingException
 
 
 class MongoDatastore(protected[mongodb] val db: DB)(implicit ec: ExecutionContext)
@@ -53,6 +54,7 @@ class MongoDatastore(protected[mongodb] val db: DB)(implicit ec: ExecutionContex
       case Some(id: BSONObjectID)=>
         db[BSONCollection](entity.collection).update(replacementEntity(entity).json, entity.json)
 
+      case Some(e) => throw new MappingException(s"BSONDocument has wrong type in id field: $e")
       case None => db[BSONCollection](entity.collection).insert(entity.json)
     }
   }
