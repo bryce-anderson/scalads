@@ -13,7 +13,11 @@ import com.google.appengine.api.datastore.Query.{Filter => GFilter, CompositeFil
 
 import scala.collection.JavaConverters._
 
-import scalads.core.{Query, Operation, CompositeFilter, Projection, JoinOperation, Filter, SingleFilter}
+import scalads.core._
+import scalads.core.Projection
+import scalads.core.CompositeFilter
+import scalads.core.SingleFilter
+import scalads.readers.ObjectReader
 
 /**
  * @author Bryce Anderson
@@ -30,7 +34,6 @@ class GAEQuery[U] private(val ds: GAEDatastore,
     this(ds, gQuery, transformer, FetchOptions.Builder.withDefaults())
 
   type Repr = GAEQuery[U]
-
 
   override def limit(size: Int) = new GAEQuery[U](ds, gQuery, transformer, fetchOptions.limit(size))
 
@@ -72,7 +75,7 @@ class GAEQuery[U] private(val ds: GAEDatastore,
     * @param projs the projections to add
     * @return the query with the applied projection.
     */
-  override def addProjections(projs: List[Projection]): GAEQuery[U] = {
+  private def addProjections(projs: List[Projection]): GAEQuery[U] = {
     // Search for blacklisted types
     projs.foreach { p =>
       if (GAEQuery.projectionsBlackList.contains(p.clazz))
@@ -99,6 +102,18 @@ class GAEQuery[U] private(val ds: GAEDatastore,
       case SDir.DSC => SortDirection.DESCENDING
     })
     new GAEQuery[U](ds, newQuery, transformer, fetchOptions)
+  }
+
+  def projectAndMap[T](projs: List[Projection], f: (DS, ObjectReader) => T): QueryIterator[T, Entity] = {
+    val it = addProjections(projs).runQuery
+
+    new QueryIterator[T, Entity] {
+      def nextEntity() = it.next()
+
+      def next(): T = f(ds, transformer.newReader(nextEntity()))
+
+      def hasNext: Boolean = it.hasNext
+    }
   }
 }
 

@@ -5,6 +5,7 @@
 *.swp
 *.out
 .history
+*.log
 
 # rails specific
 *.sqlite3

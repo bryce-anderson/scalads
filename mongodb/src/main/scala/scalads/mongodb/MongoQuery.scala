@@ -6,15 +6,14 @@ import reactivemongo.bson._
 
 import scalads.core.SortDirection.{ASC, DSC}
 
-import play.api.libs.iteratee._
-import scala.concurrent.{Await, ExecutionContext}
+import scala.concurrent.ExecutionContext
 import scala.Some
 import scalads.core.Projection
 import scalads.core.CompositeFilter
 import reactivemongo.api.collections.default.BSONCollection
 import scalads.core.SingleFilter
-import reactivemongo.api.Cursor
 import scala.concurrent.duration.Duration
+import scalads.readers.ObjectReader
 
 /**
  * @author Bryce Anderson
@@ -26,8 +25,7 @@ class MongoQuery[U] private(val ds: MongoDatastore,
                             val transformer: MongoTransformer[U],
                             maxResults: Int,
                             filters: List[Filter],
-                            sorts: List[BSONDocument],
-                            projections: List[Projection])
+                            sorts: List[BSONDocument])
                            (implicit ec: ExecutionContext) extends Query[U, ScalaDSObject] { self =>
 
   type Repr = MongoQuery[U]
@@ -35,7 +33,7 @@ class MongoQuery[U] private(val ds: MongoDatastore,
   private val waitTime = Duration.Inf
 
   // Generates a fresh query
-  def this(ds: MongoDatastore, tpe: MongoTransformer[U])(implicit ec: ExecutionContext) = this(ds, tpe, 0, Nil, Nil, Nil)(ec)
+  def this(ds: MongoDatastore, tpe: MongoTransformer[U])(implicit ec: ExecutionContext) = this(ds, tpe, 0, Nil, Nil)(ec)
 
   private def makePath(lst: List[String], lastOp: (String) => BSONDocument): BSONDocument = lst match {
     case last::Nil => lastOp(last)
@@ -48,7 +46,7 @@ class MongoQuery[U] private(val ds: MongoDatastore,
     * @return new query with the filter applied
     */
   def setFilter(filter: Filter): MongoQuery[U] =
-    new MongoQuery[U](ds, transformer, maxResults, filter::filters, sorts, projections)
+    new MongoQuery[U](ds, transformer, maxResults, filter::filters, sorts)
 
   /** Sort the results based on the projection and sorting direction
     *
@@ -62,17 +60,8 @@ class MongoQuery[U] private(val ds: MongoDatastore,
       case DSC => -1
     }
     val obj = makePath(field.path, str => BSONDocument(str -> order))
-    new MongoQuery[U](ds, transformer, maxResults, filters, obj::sorts, projections)
+    new MongoQuery[U](ds, transformer, maxResults, filters, obj::sorts)
   }
-
-  /** method to add the intended projections. Intended to be called immediately before mapIterator by the project macro
-    *
-    * @param projs the projections to add
-    * @return the query with the applied projection.
-    */
-  protected def addProjections(projs: List[Projection]): MongoQuery[U] =
-    new MongoQuery[U](ds, transformer, maxResults, filters, sorts, projs:::projections)
-
 
   // generates the DBObject for a filter
   private def filterwalk(f: Filter): BSONDocument = f match {
@@ -97,14 +86,14 @@ class MongoQuery[U] private(val ds: MongoDatastore,
       BSONDocument("$or" -> lst)
   }
 
-  private def buildProjection(projs: List[Projection]): BSONDocument = {
-    BSONDocument(projs.map{ p => (p.path.head, BSONInteger(1))})
-  }
+  private def buildProjection(projs: List[Projection]): Option[BSONDocument] = if (projs.isEmpty) {
+    Some(BSONDocument(projs.map{ p => (p.path.head, BSONInteger(1))}))
+  } else None
 
-  private def getQueryBuilder = {
-    // Make the filters
-    val grandFilter: BSONDocument = {
-      val newFilters = filters.map(filterwalk)
+  private def getQueryBuilder(projection: Option[BSONDocument]) = {
+
+    val grandFilter: BSONDocument = { // Make the filters
+    val newFilters = filters.map(filterwalk)
       newFilters match {
         case Nil        => BSONDocument()
         case f::Nil     => f
@@ -113,57 +102,40 @@ class MongoQuery[U] private(val ds: MongoDatastore,
       }
     }
 
-    val grandProjection: Option[BSONDocument] = if (!projections.isEmpty) {
-      Some(buildProjection(projections))
-    } else None
-
     // Run the query, add the limit, and add the sort directions
     val coll = ds.db[BSONCollection](transformer.typeName)
     val it = sorts.foldRight{
-      grandProjection.fold(coll.find(grandFilter))(coll.find(grandFilter, _))
+      projection.fold(coll.find(grandFilter))(coll.find(grandFilter, _))
     }((s, it) => it.sort(s))
 
     it
   }
 
-  def getCursor: Cursor[U with EntityBacker[U, ScalaDSObject]] = {
-    getQueryBuilder.cursor[U with EntityBacker[U, ScalaDSObject]](new BSONDocumentReader[U with EntityBacker[U, ScalaDSObject]] {
-      def read(bson: BSONDocument): U with EntityBacker[U, ScalaDSObject] = transformer.deserialize(ds, transformer.wrapDocument(bson))
-    }, ec)
+  def projectAndMap[T](projs: List[Projection], f: (DS, ObjectReader) => T): MongoIterator[T] = {
+    val proj = buildProjection(projs)
+    new MongoIterator[T](
+      getQueryBuilder(proj).cursor,
+      transformer.typeName,
+      ec,
+      d => f(ds, transformer.newReader(transformer.wrapDocument(d))),
+      maxResults
+      //, TODO: duration
+    )
   }
 
-  def enumerate: Enumerator[U with EntityBacker[U, ScalaDSObject]] = getCursor.enumerate(maxResults)
+  def runQuery = getIterator().map(_.ds_entity)
 
-  def runQuery: Iterator[ScalaDSObject] = {
-    var cursor = getQueryBuilder.cursor
-
-    def refreshCursor(): Cursor[BSONDocument] = {
-      while(!cursor.iterator.hasNext && cursor.hasNext)
-        cursor = Await.result(cursor.next, waitTime)
-      cursor
-    }
-
-    var resultCount = 0
-
-    new Iterator[ScalaDSObject] {
-      def hasNext: Boolean = {
-        if (maxResults > 0 && resultCount == maxResults) return false
-        if (cursor.iterator.hasNext) return true
-        refreshCursor()
-        cursor.iterator.hasNext
-      }
-
-      def next(): ScalaDSObject = {
-        resultCount += 1
-        if (maxResults > 0 && resultCount > maxResults) sys.error(s"Iterator is past the requested results: MaxResults: $maxResults")
-
-        if (cursor.iterator.hasNext) return new ScalaDSObject(transformer.typeName, cursor.iterator.next())
-        refreshCursor()
-        new ScalaDSObject(transformer.typeName, cursor.iterator.next())
-      }
-    }
+  override def getIterator(): MongoIterator[U with EntityBacker[U, ScalaDSObject]] = {
+    new MongoIterator[U with EntityBacker[U, ScalaDSObject]](
+      getQueryBuilder(None).cursor,
+      transformer.typeName,
+      ec,
+      d => transformer.deserialize(ds, transformer.wrapDocument(d)),
+      maxResults
+      //, TODO: duration. This could be set in the typesafe config?
+    )
   }
 
   def limit(size: Int): MongoQuery[U] =
-    new MongoQuery[U](ds, transformer, size, filters, sorts, projections)
+    new MongoQuery[U](ds, transformer, size, filters, sorts)
 }
