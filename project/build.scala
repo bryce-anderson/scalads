@@ -19,12 +19,17 @@ object Settings {
 
 object build extends Build {
 
+lazy val project = Project (
+    "project",
+    file("."),
+    settings = Settings.buildSettings
+  ) aggregate(macros, appengine, mongodb)
+
   lazy val macros: Project = Project(
     id = "ds-macros",
     base = file("macros"),
     settings = Settings.buildSettings ++ Seq(parallelExecution in Test := false) ++ Seq(
       libraryDependencies += GoogleAppEngine
-      
     )
   )
   
@@ -44,9 +49,8 @@ object build extends Build {
     base = file("mongodb"),
     settings = Settings.buildSettings ++ Seq(parallelExecution in Test := false) ++ Seq(
       libraryDependencies += MongoDBDriver,
-      libraryDependencies += MongoMemoryDB % "test"
+      libraryDependencies += TypesafeConfig
     )
-  ) dependsOn(macros % "test->test;compile->compile")
-  
+  ) dependsOn(macros % "test->test;compile->compile")  
 }
 

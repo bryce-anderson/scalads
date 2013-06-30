@@ -19,18 +19,17 @@ import scala.Some
 import reactivemongo.api.collections.default.BSONCollection
 import java.util.Date
 import scalads.exceptions.MappingException
+import com.typesafe.config.ConfigFactory
 
 
 class MongoDatastore(protected[mongodb] val db: DB)(implicit ec: ExecutionContext)
         extends Datastore[Future[LastError], ScalaDSObject] { self =>
 
-  type WriteResult = Future[LastError]
-
   type QueryType[U] = MongoQuery[U]
 
   type TFactory[U] = MongoTransformer[U]
 
-  def update[U, V](theOld: U with EntityBacker[U, ScalaDSObject], theNew: U): WriteResult = {
+  def update[U, V](theOld: U with EntityBacker[U, ScalaDSObject], theNew: U): Future[LastError] = {
     val writer = theOld.transformer.newWriter(replacementEntity(theOld.ds_entity))
     theOld.ds_serialize(theNew, writer)
     db[BSONCollection](theOld.ds_entity.collection)
@@ -49,7 +48,7 @@ class MongoDatastore(protected[mongodb] val db: DB)(implicit ec: ExecutionContex
     * @param entity native entity intended to be stored
     * @return result of storing the entity
     */
-  def putEntity(entity: ScalaDSObject): WriteResult = {
+  def putEntity(entity: ScalaDSObject): Future[LastError] = {
     entity.json.get(MongoDatastore.id) match {
       case Some(id: BSONObjectID)=>
         db[BSONCollection](entity.collection).update(replacementEntity(entity).json, entity.json)
@@ -68,6 +67,13 @@ class MongoDatastore(protected[mongodb] val db: DB)(implicit ec: ExecutionContex
   def query[U](implicit trans: MongoTransformer[U]): MongoQuery[U] = new MongoQuery[U](self, trans)
 
   def delete(entity: ScalaDSObject) { db[BSONCollection](entity.collection).remove(entity.json) }
+
+  /** Drops the collection corresponding to the type provided
+    *
+    * @tparam U type of object stored in the collection
+    * @return the future will be completed with an error if the collection does not exist
+    */
+  def drop[U: TypeTag]: Future[Boolean] = db[BSONCollection](MongoDatastore.collectionName).drop()
 }
 
 object MongoDatastore {
@@ -90,4 +96,6 @@ object MongoDatastore {
 
     case e => sys.error(s"Match error! Found type ${e.getClass}")
   }
+
+  private[mongodb] val config = ConfigFactory.load()
 }

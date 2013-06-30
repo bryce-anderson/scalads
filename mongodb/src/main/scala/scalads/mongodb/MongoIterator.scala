@@ -4,7 +4,7 @@ import scalads.core.QueryIterator
 import reactivemongo.bson.BSONDocument
 import reactivemongo.api.Cursor
 import scala.concurrent.{ExecutionContext, Await}
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration._
 import play.api.libs.iteratee.Enumerator
 
 /**
@@ -15,13 +15,12 @@ class MongoIterator[T] private[mongodb](private var cursor: Cursor[BSONDocument]
                        typeName: String,
                        ec: ExecutionContext,
                        mapper: BSONDocument => T,
-                       maxResults: Int = -1,
-                       waitTime: Duration = Duration.Inf) extends QueryIterator[T, ScalaDSObject] {
+                       maxResults: Int = -1) extends QueryIterator[T, ScalaDSObject] {
 
 
   private def refreshCursor(): Cursor[BSONDocument] = {
     while(!cursor.iterator.hasNext && cursor.hasNext)
-      cursor = Await.result(cursor.next, waitTime)
+      cursor = Await.result(cursor.next, MongoIterator.waitTime)
     cursor
   }
 
@@ -50,7 +49,7 @@ class MongoIterator[T] private[mongodb](private var cursor: Cursor[BSONDocument]
   }
 
   override def map[U](f: T => U): MongoIterator[U] =
-    new MongoIterator[U](cursor, typeName, ec, doc => f(mapper(doc)), maxResults - resultCount, waitTime)
+    new MongoIterator[U](cursor, typeName, ec, doc => f(mapper(doc)), maxResults - resultCount)
 
   def nextEntity(): ScalaDSObject = it.next()
 
@@ -60,4 +59,13 @@ class MongoIterator[T] private[mongodb](private var cursor: Cursor[BSONDocument]
 
   def enumerate: Enumerator[T] = cursor.enumerate()(ec).map(mapper)
 
+}
+
+object MongoIterator {
+  val waitTime = {
+    val timeoutPath = "scalads.mongo.timeout"
+    if (MongoDatastore.config.hasPath(timeoutPath))
+      Duration(MongoDatastore.config.getInt(timeoutPath), MILLISECONDS)
+    else 10000.millis
+  }
 }

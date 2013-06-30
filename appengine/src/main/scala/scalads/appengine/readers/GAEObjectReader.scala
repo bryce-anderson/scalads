@@ -90,7 +90,7 @@ class GAEObjectReader(entity: PropertyContainer, prefix: String) extends ObjectR
   def optBytes(key: String): Option[Array[Byte]] = Option(entity.getProperty(fullPrefix + key)).flatMap(_ match {
     case i: ShortBlob => Some(i.getBytes)
     case i: Blob      => Some(i.getBytes)
-      // TODO: need to check both types
+      // TODO: need to check both type when pulling from a raw value
     case r: RawValue => try { Some(r.asStrictType(classOf[Blob]).getBytes) } catch { case _: Throwable => None }
     case _ => None
 

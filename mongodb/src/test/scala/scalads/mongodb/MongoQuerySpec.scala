@@ -1,7 +1,6 @@
 package scalads.mongodb
 
 import scalads.annotations.Rename
-import com.mongodb.{BasicDBObject}
 
 import scala.concurrent.Await
 import scala.concurrent.duration._

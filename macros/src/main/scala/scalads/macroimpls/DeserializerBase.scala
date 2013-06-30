@@ -176,10 +176,7 @@ class DeserializerBase[CONTEXT <: Context](val c: CONTEXT) {
       str.charAt(0)
     } }
     else if (tpe =:= typeOf[Boolean])     reify { reader.splice.optBool(field.splice)   }
-    else if (tpe =:= typeOf[Date])         reify {
-      // Todo: Make this more flexible
-      reader.splice.optString(field.splice).map(new SimpleDateFormat().parse(_))
-    }
+    else if (tpe =:= typeOf[Date])         reify { reader.splice.optDate(field.splice) }
     else if (tpe =:= typeOf[scala.Symbol]) reify {
       reader.splice.optString(field.splice).map(Symbol(_))
     }

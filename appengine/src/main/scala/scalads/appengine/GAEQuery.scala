@@ -37,11 +37,11 @@ class GAEQuery[U] private(val ds: GAEDatastore,
 
   override def limit(size: Int) = new GAEQuery[U](ds, gQuery, transformer, fetchOptions.limit(size))
 
-  def withEndCursor(offset: String) =
-    new GAEQuery[U](ds, gQuery, transformer, fetchOptions.endCursor(Cursor.fromWebSafeString(offset)))
+  def withEndCursor(cursor: String) =
+    new GAEQuery[U](ds, gQuery, transformer, fetchOptions.endCursor(Cursor.fromWebSafeString(cursor)))
 
-  def withStartCursor(offset: String) =
-    new GAEQuery[U](ds, gQuery, transformer, fetchOptions.startCursor(Cursor.fromWebSafeString(offset)))
+  def withStartCursor(cursor: String) =
+    new GAEQuery[U](ds, gQuery, transformer, fetchOptions.startCursor(Cursor.fromWebSafeString(cursor)))
 
   override def runQuery: Iterator[GEntity] = {
     val result = ds.collection.prepare(gQuery).asQueryResultIterator(fetchOptions).asScala
@@ -126,8 +126,7 @@ object GAEQuery {
   )
 
   private[GAEQuery] val projectionsBlackList: List[Class[_]] =
-      classOf[List[_]]::
-      classOf[Map[_,_]]::Nil
+      List(classOf[List[_]], classOf[Map[_,_]])
 }
 
 

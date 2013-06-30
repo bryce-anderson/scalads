@@ -119,7 +119,6 @@ class MongoQuery[U] private(val ds: MongoDatastore,
       ec,
       d => f(ds, transformer.newReader(transformer.wrapDocument(d))),
       maxResults
-      //, TODO: duration
     )
   }
 
@@ -132,7 +131,6 @@ class MongoQuery[U] private(val ds: MongoDatastore,
       ec,
       d => transformer.deserialize(ds, transformer.wrapDocument(d)),
       maxResults
-      //, TODO: duration. This could be set in the typesafe config?
     )
   }
 

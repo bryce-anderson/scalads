@@ -72,7 +72,7 @@ object EntityDeserializer {
               Literal(Constant(()))
             )
           ),
-          // TODO: This will need to be changed as not all datastores will use Entities...
+
           ValDef(Modifiers(), newTermName("ds_entity"), TypeTree(weakTypeOf[E]), entity.tree): Tree,
           ValDef(Modifiers(), newTermName("ds"), TypeTree(weakTypeOf[Datastore[_, E]]), dsExpr.tree),
           ValDef(Modifiers(), newTermName("transformer"), TypeTree(weakTypeOf[scalads.core.Transformer[U, E]]), transExpr.tree),

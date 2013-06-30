@@ -11,7 +11,7 @@ import scalads.core.{EntityBacker, QueryIterator}
  *         Created on 6/16/13
  */
 
-class GAEQuerySpec extends GAESpecTemplate { // with GenericQuerySpec {
+class GAEQuerySpec extends GAESpecTemplate {
 
   case class  Test(in: Int, in2: String)
   case class Compound(in: Int, in2: Test)

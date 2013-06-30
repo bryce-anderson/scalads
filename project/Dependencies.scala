@@ -12,8 +12,10 @@ object Dependencies {
   lazy val GoogleAppEngineStubs = "com.google.appengine" % "appengine-api-stubs" % appengineVersion
   lazy val GoogleAppEngineLabs = "com.google.appengine" % "appengine-api-labs" % appengineVersion
   
+  lazy val TypesafeConfig = "com.typesafe" % "config" % "1.0.1"
+  
   lazy val MongoDBDriver = "org.reactivemongo" %% "reactivemongo" % "0.9"
-  lazy val MongoMemoryDB = "de.bwaldvogel" % "mongo-java-server" % "1.1.1"
+  // lazy val MongoMemoryDB = "de.bwaldvogel" % "mongo-java-server" % "1.1.1"
   lazy val PlayIteratees = "play" %% "play-iteratees" % "2.1.0"
   
 }

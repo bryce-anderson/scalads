@@ -4,7 +4,6 @@ import language.experimental.macros
 
 import java.util.Date
 import com.google.appengine.api.datastore._
-import java.util
 import scalads.writers.Writer
 
 /**
