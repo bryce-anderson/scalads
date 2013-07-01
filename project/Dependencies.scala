@@ -18,4 +18,9 @@ object Dependencies {
   // lazy val MongoMemoryDB = "de.bwaldvogel" % "mongo-java-server" % "1.1.1"
   lazy val PlayIteratees = "play" %% "play-iteratees" % "2.1.0"
   
+  // Dependencies for the examples
+  lazy val scalatra_2_10 = "org.scalatra" % "scalatra_2.10" % "2.2.1"
+  lazy val jetty = "org.eclipse.jetty" % "jetty-webapp" % "8.1.10.v20130312" 
+  lazy val servlet = "javax.servlet" % "javax.servlet-api" % "3.0.1"
+  
 }

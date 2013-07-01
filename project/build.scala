@@ -51,6 +51,12 @@ lazy val project = Project (
       libraryDependencies += MongoDBDriver,
       libraryDependencies += TypesafeConfig
     )
-  ) dependsOn(macros % "test->test;compile->compile")  
+  ) dependsOn(macros % "test->test;compile->compile") 
+
+  lazy val examples: Project = Project(
+    id = "ds-examples",
+    base = file("examples"),
+    settings = Settings.buildSettings
+  ) dependsOn(mongodb)
 }
 
