@@ -35,6 +35,11 @@ class MongoQuery[U] private(val ds: MongoDatastore,
   // Generates a fresh query
   def this(ds: MongoDatastore, tpe: MongoTransformer[U])(implicit ec: ExecutionContext) = this(ds, tpe, 0, Nil, Nil)(ec)
 
+
+  def remove(id: String) {
+    ds.delete(new ScalaDSObject(transformer.typeName, BSONDocument("_id" -> BSONObjectID(id))))
+  }
+
   private def makePath(lst: List[String], lastOp: (String) => BSONDocument): BSONDocument = lst match {
     case last::Nil => lastOp(last)
     case h::t => BSONDocument(h -> makePath(t, lastOp))
@@ -75,7 +80,10 @@ class MongoQuery[U] private(val ds: MongoDatastore,
         case Operation.NE => "$ne"
       }
 
-      makePath(f.axis.path, key => BSONDocument(key ->  BSONDocument(op -> MongoDatastore.mongoHandle(f.value))))
+      makePath(f.axis.path, key => BSONDocument(key ->  {
+        if (op != "$eq") BSONDocument(op -> MongoDatastore.mongoHandle(f.value))
+        else MongoDatastore.mongoHandle(f.value)
+      }))
 
     case CompositeFilter(f1, f2, JoinOperation.AND) =>
       val lst = BSONArray( filterwalk(f1), filterwalk(f2) )

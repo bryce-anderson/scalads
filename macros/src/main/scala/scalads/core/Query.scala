@@ -23,6 +23,8 @@ trait Query[U, E] { self =>
 
   protected def transformer: Transformer[U, E]
 
+  def remove(id: String): Unit
+
   /** Generated a new query that will filter the results based on the filter
     *
     * @param filter filter to be applied to the query

@@ -8,7 +8,7 @@ package appengine
 
 import language.experimental.macros
 
-import com.google.appengine.api.datastore.{Query => GQuery, Entity => GEntity, FetchOptions, Cursor, Key, PropertyProjection}
+import com.google.appengine.api.datastore.{Query => GQuery, Entity => GEntity, FetchOptions, Cursor, Key, PropertyProjection, KeyFactory}
 import com.google.appengine.api.datastore.Query.{Filter => GFilter, CompositeFilterOperator, FilterPredicate, SortDirection}
 
 import scala.collection.JavaConverters._
@@ -18,6 +18,7 @@ import scalads.core.Projection
 import scalads.core.CompositeFilter
 import scalads.core.SingleFilter
 import scalads.readers.ObjectReader
+import scalads.exceptions.MappingException
 
 /**
  * @author Bryce Anderson
@@ -34,6 +35,16 @@ class GAEQuery[U] private(val ds: GAEDatastore,
     this(ds, gQuery, transformer, FetchOptions.Builder.withDefaults())
 
   type Repr = GAEQuery[U]
+
+
+  def remove(id: String) {
+    try {
+      val key = KeyFactory.createKey(transformer.getName(), id.toLong)
+      ds.delete(key)
+    } catch {
+      case e: NumberFormatException => throw new MappingException(s"String '$id' cannot be converted to Long for GAE Key")
+    }
+  }
 
   override def limit(size: Int) = new GAEQuery[U](ds, gQuery, transformer, fetchOptions.limit(size))
 

@@ -48,22 +48,15 @@ class MongoQuerySpec extends MongoSpecTemplate {
     query.filter(_.in2 < "sweet")
   }
 
-  it should "deal with non constants" in {
-    val query = ds.query[Test]
-    val test = Test(1, "two")
-    query.filter{ bryce =>  bryce.in < test.in }
-
-    query.filter{ bryce => test.in < bryce.in }
-  }
-
   it should "do filtering correctly" in {
     val query = ds.query[Test]
-      .filter(_.in < 0)
 
     val test =  Test(1, "two")
-    query.filter{ bryce =>  bryce.in < test.in }
-
-    query.filter{ bryce => test.in < bryce.in }
+    query.filter{ bryce =>  bryce.in < test.in }.getIterator().length should equal (1)
+    query.filter(_.in < 0).getIterator().length should equal (0)
+    query.filter(_.in == 3).getIterator().length should equal (1)
+    query.filter(t => t.in >= 2 && t.in < 5).getIterator().length should equal (3)
+    query.filter(t => t.in <= 2 || t.in == 5).getIterator().length should equal (4)
   }
 
   it should  "produce an iterator" in {

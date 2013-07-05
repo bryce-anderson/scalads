@@ -13,6 +13,7 @@ import scalads.core.{EntityBacker, QueryIterator}
 
 class GAEQuerySpec extends GAESpecTemplate {
 
+  case class Deleted(in: Int)
   case class  Test(in: Int, in2: String)
   case class Compound(in: Int, in2: Test)
   case class Types(in1: Int, in2: Long, in3: Float, in4: Double, in5: String, in6: Date)
@@ -215,6 +216,13 @@ class GAEQuerySpec extends GAESpecTemplate {
 
   it should "find renamed fields" in {
     ds.query[FieldRenamed].getIterator.length should equal(1)
+  }
+
+  it should "remove deleted objects" in {
+    val key = ds.put(Deleted(4))
+    ds.query[Deleted].remove(key.getId.toString)
+
+    ds.query[Deleted].getIterator().length should equal (0)
   }
 
 }
