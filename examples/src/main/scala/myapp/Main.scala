@@ -45,7 +45,7 @@ class Main extends ScalatraServlet with FutureSupport {
     val respBuffer = new NodeBuffer
 
     val finished = enum |>> Iteratee.foreach{p =>
-      val deladdress = "/delete/" + p.ds_entity.getIDString()
+      val deladdress = "/delete/" + p.ds_idString()
       println(deladdress)
 
       respBuffer += <tr>

@@ -37,6 +37,8 @@ trait MongoTransformer[U] extends Transformer[U, ScalaDSObject] {
   def wrapDocument(entity: BSONDocument) = new ScalaDSObject(typeName, entity)
 
   lazy val typeName: String = MongoDatastore.collectionName(typeTag)
+
+  def getKeyString(entity: ScalaDSObject): String = entity.getIDString()
 }
 
 object MongoTransformer {

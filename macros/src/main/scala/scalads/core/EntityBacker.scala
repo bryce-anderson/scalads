@@ -24,6 +24,8 @@ trait EntityBacker[U, E] { self: U =>
 
   def ds_entity: E
 
+  def ds_idString() = transformer.getKeyString(ds_entity)
+
   def ds_update(): Unit = {
     ds_serialize(self, transformer.newWriter(ds_entity))
     ds.put(self)

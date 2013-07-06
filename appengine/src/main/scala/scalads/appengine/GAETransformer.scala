@@ -30,6 +30,8 @@ trait GAETransformer[U] extends Transformer[U, Entity] {
   def typeTag: TypeTag[U]
 
   def getName() = scalads.util.AnnotationHelpers.getName(typeTag)
+
+  def getKeyString(entity: Entity): String = entity.getKey.getId.toString
 }
 
 object GAETransformer {

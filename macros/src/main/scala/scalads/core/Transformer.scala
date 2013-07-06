@@ -19,6 +19,8 @@ import scalads.Datastore
   */
 trait Transformer[U, Entity] { self =>
 
+  def getKeyString(entity: Entity): String
+
   /** Factory method for generating object readers
     *
     * @param entity datastore entity intended to be wrapped by the reader
