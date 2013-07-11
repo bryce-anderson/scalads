@@ -1,15 +1,13 @@
 package myapp
 
 import org.scalatra.{FutureSupport, ScalatraServlet}
-import scalads.mongodb.{ScalaDSObject, MongoDatastore}
-import reactivemongo.api.{DB, MongoConnection, MongoDriver}
+import scalads.mongodb.ScalaDSObject
 
 import play.api.libs.iteratee.{Enumerator, Iteratee}
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration._
 import scala.xml.NodeBuffer
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
 import scalads.core.EntityBacker
 
 /**
@@ -17,35 +15,15 @@ import scalads.core.EntityBacker
  *         Created on 6/30/13
  */
 
-
-case class Person(name: String, age: Int)
-
-
-class Main extends ScalatraServlet with FutureSupport {
+class Main extends ScalatraServlet with FutureSupport with DataConnection {
 
   protected implicit def executor: ExecutionContext = implicitly[ExecutionContext]
 
-  private lazy val ds = {
-    import com.typesafe.config.ConfigFactory
-
-    val config = ConfigFactory.load()
-    val driver = new MongoDriver
-    val connection: MongoConnection = driver.connection(List(config.getString("mongo.address")+":"+config.getInt("mongo.port")))
-    def db:DB = connection("testdb")
-
-    val username = config.getString("mongo.username")
-    if (username != "null") {
-      db.authenticate(username, config.getString("mongo.pass"))(3.seconds)
-    }
-
-    new MongoDatastore(db)
-  }
-
-  private def makeNamesTable(enum: Enumerator[Person with EntityBacker[Person, ScalaDSObject]]) = {
+  private def makeNamesHTMLTable(enum: Enumerator[Person with EntityBacker[Person, ScalaDSObject]]) = {
     val respBuffer = new NodeBuffer
 
     val finished = enum |>> Iteratee.foreach{p =>
-      val deladdress = "/delete/" + p.ds_idString()
+      val deladdress = "delete/" + p.ds_idString()
 
       respBuffer += <tr>
         <td>{p.name}</td>
@@ -59,9 +37,9 @@ class Main extends ScalatraServlet with FutureSupport {
     finished.map { _ =>
       <html><body>
         <h2>List of People.</h2>
-        <a href="/names">All People</a><br/>
-        <a href="/submit">Submit new person.</a><br/>
-        <a href="/find">Find People.</a>
+        <a href="names">All People</a><br/>
+        <a href="submit">Submit new person.</a><br/>
+        <a href="find">Find People.</a>
         <table>
           {respBuffer.result()}
         </table>
@@ -69,28 +47,39 @@ class Main extends ScalatraServlet with FutureSupport {
     }
   }
 
+  def personForm(action: String) =
+    <form name="input" action={action} method="post">
+      <table>
+        <tr>
+          <td>Name:</td>
+          <td><input type="text" name="name"/></td>
+        </tr>
+        <tr>
+          <td>Age:</td>
+          <td><input type="number" name="age" /></td>
+        </tr>
+      </table>
+      <button>Submit</button>
+    </form>
+
+  // Now the actual routes
+
   get("/names") {
     val people = ds.query[Person].getIterator().enumerate
 
-    makeNamesTable(people)
+    makeNamesHTMLTable(people)
   }
 
   get("/delete/:id") {
     ds.query[Person].remove(params("id"))
-    redirect("/names")
+    redirect(url("/names"))
   }
-
-  def personForm(action: String) =
-    <form name="input" action={action} method="post">
-      Name: <input type="text" name="name"/><br/>
-      Age: <input type="number" name="age" /><br/>
-      <button>Submit</button>
-    </form>
 
   get("/find") {
     <html><body>
-      Find person:<br/>
-      {personForm("/find")}
+      <h3>Find Person</h3>
+      {personForm("find")}
+      <a href="names">Return to Main Menu</a>
     </body></html>
   }
 
@@ -114,21 +103,22 @@ class Main extends ScalatraServlet with FutureSupport {
       case (None, None) => query
     }
 
-
-    makeNamesTable(results.getIterator().enumerate)
+    makeNamesHTMLTable(results.getIterator().enumerate)
   }
 
   get("/submit") {
-     <html><body>
-     Person to Submit:<br/>
-       {personForm("/submit")}
-       <a href="/names">Return to Main Menu</a>
-     </body></html>
+     <html>
+       <body>
+        <h3>Person to Submit</h3>
+        {personForm("submit")}
+        <a href="names">Return to Main Menu</a>
+      </body>
+     </html>
   }
 
   post("/submit") {
     val person = Person(multiParams("name").head, multiParams("age").head.toInt)
     ds.put(person)
-    redirect("/submit")
+    redirect(url("/names"))
   }
 }
