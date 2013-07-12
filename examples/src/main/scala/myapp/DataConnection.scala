@@ -26,7 +26,7 @@ object DataConnection {
     val config = ConfigFactory.load()
     val driver = new MongoDriver
     val connection: MongoConnection = driver.connection(List(config.getString("mongo.address")+":"+config.getInt("mongo.port")))
-    def db:DB = connection("testdb")
+    def db:DB = connection(config.getString("mongo.dbName"))
 
     val username = config.getString("mongo.username")
     if (username != "null") {

@@ -6,7 +6,7 @@ description := "Examples of using ScalaDS with Scalatra"
 
 // Add the webplugin
 
-seq(webSettings :_*)
+seq(sbtappengine.Plugin.webSettings :_*)
 
 TaskKey[Unit]("gc") := {
   println("requesting garbage collection")
@@ -14,7 +14,7 @@ TaskKey[Unit]("gc") := {
 }
 
 libraryDependencies ++= Seq(
-  scalatra_2_10,
+  scalatra_2_2_1,
   jetty % "container",
   MongoDBDriver,
   servlet

@@ -1,13 +1,9 @@
 package myapp
 
-import org.scalatra.{FutureSupport, ScalatraServlet}
-import scalads.mongodb.ScalaDSObject
+import org.scalatra.ScalatraServlet
+import com.google.appengine.api.datastore.Entity
 
-import play.api.libs.iteratee.{Enumerator, Iteratee}
-
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.xml.NodeBuffer
-import scala.concurrent.{Future, ExecutionContext}
 import scalads.core.EntityBacker
 
 /**
@@ -15,14 +11,12 @@ import scalads.core.EntityBacker
  *         Created on 6/30/13
  */
 
-class Main extends ScalatraServlet with FutureSupport with DataConnection {
+class Main extends ScalatraServlet with DataConnection {
 
-  protected implicit def executor: ExecutionContext = implicitly[ExecutionContext]
-
-  private def makeNamesHTMLTable(enum: Enumerator[Person with EntityBacker[Person, ScalaDSObject]]) = {
+  private def makeNamesHTMLTable(iterator: Iterator[Person with EntityBacker[Person, Entity]]) = {
     val respBuffer = new NodeBuffer
 
-    val finished = enum |>> Iteratee.foreach{p =>
+    iterator.foreach{p =>
       val deladdress = "delete/" + p.ds_idString()
 
       respBuffer += <tr>
@@ -34,17 +28,15 @@ class Main extends ScalatraServlet with FutureSupport with DataConnection {
       </tr>
     }
 
-    finished.map { _ =>
-      <html><body>
-        <h2>List of People.</h2>
-        <a href="names">All People</a><br/>
-        <a href="submit">Submit new person.</a><br/>
-        <a href="find">Find People.</a>
-        <table>
-          {respBuffer.result()}
-        </table>
-      </body></html>
-    }
+    <html><body>
+      <h2>List of People.</h2>
+      <a href="names">All People</a><br/>
+      <a href="submit">Submit new person.</a><br/>
+      <a href="find">Find People.</a>
+      <table>
+        {respBuffer.result()}
+      </table>
+    </body></html>
   }
 
   def personForm(action: String) =
@@ -65,23 +57,23 @@ class Main extends ScalatraServlet with FutureSupport with DataConnection {
   // Now the actual routes
 
   get("/") {
-    redirect(url("/names"))
+    redirect("/names")
   }
 
   get("/future") {
-    Future(<html><body>This is a future.</body></html>)
+    <html><body>This is NOT a future.</body></html>
   }
 
 
   get("/names") {
-    val people = ds.query[Person].getIterator().enumerate
+    val people = ds.query[Person].getIterator()
 
     makeNamesHTMLTable(people)
   }
 
   get("/delete/:id") {
     ds.query[Person].remove(params("id"))
-    redirect(url("/names"))
+    redirect("/names")
   }
 
   get("/find") {
@@ -112,7 +104,7 @@ class Main extends ScalatraServlet with FutureSupport with DataConnection {
       case (None, None) => query
     }
 
-    makeNamesHTMLTable(results.getIterator().enumerate)
+    makeNamesHTMLTable(results.getIterator())
   }
 
   get("/submit") {
@@ -128,6 +120,6 @@ class Main extends ScalatraServlet with FutureSupport with DataConnection {
   post("/submit") {
     val person = Person(multiParams("name").head, multiParams("age").head.toInt)
     ds.put(person)
-    redirect(url("/names"))
+    redirect("/names")
   }
 }

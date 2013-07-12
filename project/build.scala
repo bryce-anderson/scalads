@@ -58,5 +58,11 @@ lazy val project = Project (
     base = file("examples"),
     settings = Settings.buildSettings
   ) dependsOn(mongodb)
+  
+  lazy val appengineExample: Project = Project(
+    id = "scalads-appeExample",
+    base = file("appengine_example"),
+    settings = Settings.buildSettings
+  ) dependsOn(appengine)
 }
 
