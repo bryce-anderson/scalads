@@ -64,5 +64,10 @@ lazy val project = Project (
     base = file("appengine_example"),
     settings = Settings.buildSettings
   ) dependsOn(appengine)
+  
+  lazy val annotationExample: Project = Project(
+    id = "scalads-annotationAppengineExample",
+    base = file("appengine_annotationexample"),
+    settings = Settings.buildSettings
+  ) dependsOn( ProjectRef(uri("../annotations/"),      "servlet_macros") ) dependsOn(appengine)
 }
-
